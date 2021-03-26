@@ -1,5 +1,5 @@
 # SlackCellESP32
-Development for ESP32 version of SlackCell (original version by Markus Rampp).
+Development for ESP32 version of SlackCell (original version by Markus Rampp - https://markusrampp.eu/SlackCell/).
 
 Current features are limited to displaying current and max force on integrated OLED, and writing forces to microSD.
 
