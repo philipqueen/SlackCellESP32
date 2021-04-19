@@ -19,6 +19,7 @@ Future improvements:
 - Add switch functionality to turn off display, in order to improve sampling rate
 - Implement dual core functionality to decrease display slowdowns
 - Set force change threshold for the display changes (0.1kN)
+- Don't change force display while max force is changing (should reduce slowdowns to no less than 30 Hz).
 
 Developed for the Heltec Wifi Kit 32. Using other ESP microcontrollers may require changing the U8G2 setup code.
 
