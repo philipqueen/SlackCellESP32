@@ -22,4 +22,7 @@ Future improvements:
 
 Developed for the Heltec Wifi Kit 32. Using other ESP32 microcontrollers may require changing the U8G2 setup code.
 
+How to make a SlackCell ESP32:
+You will need a Heltec Wifi Kit 32 microcontroller, an HX711 loadcell amplifier, a microSD card reader, and a 4/5 wire load cell of your desired capacity. These are then soldered to a proto board using small gauge wiring. The code gives the wiring connections, and they are roughly similar to Markus Rampp's instructions above, but soon I will add them as a table here. Please reach out if you need help sourcing parts or would like more details on construction.  
+
 Dual core version is NOT FUNCTIONING. I appreciate any insight into why.
