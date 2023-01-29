@@ -5,11 +5,6 @@ Based on Slackcell code by Markus Rampp
 Designed for use with ESP32 using SSD1306_128x64 OLED Display
 Tested with and recommended for Heltec WifiKit32 controller
 
-Future improvements:
-  1) Separate display values to core 0 to speed up read speed
-  2) Improve general read speed from 65 to 80 Hz
-  3) Implement BLE connection for app integration
-
 */
 
 #include "HX711.h" //library for loadcell amplifier
