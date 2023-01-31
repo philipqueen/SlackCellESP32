@@ -1,6 +1,6 @@
 /*
 
-Based on Slackcell code by Markus Rampp
+Based on Slackcell code by Markus Rampp (copyright 2020)
 
 Designed for use with ESP32 using SSD1306_128x64 OLED Display
 Tested with and recommended for Heltec WifiKit32 controller
@@ -8,9 +8,7 @@ Tested with and recommended for Heltec WifiKit32 controller
 */
 
 #include "HX711.h" //library for loadcell amplifier
-//#include "BT.h"
 #include <U8g2lib.h> //library for OLED
-//#include <Wire.h>
 
 // libraries for SD card
 #include "FS.h"
@@ -23,8 +21,8 @@ const long baud = 115200;
 // HX711 circuit wiring
 const int LOADCELL_SCK_PIN = 26;
 const int LOADCELL_DOUT_PIN = 25;
-const long LOADCELL_OFFSET = 2900;
-const long LOADCELL_DIVIDER_N = -217;
+const long LOADCELL_OFFSET = 2330;
+const long LOADCELL_DIVIDER_N = -232;
 const long LOADCELL_DIVIDER_kg = LOADCELL_DIVIDER_N * 9.81;
 const long LOADCELL_DIVIDER_lb = LOADCELL_DIVIDER_N * 4.448;
 
@@ -62,10 +60,8 @@ void setup() {
   u8g2.begin();
   u8g2.setPowerSave(0);
   u8g2.setFont(u8g2_font_inb21_mf);
-  //u8g2.setFontRefHeightExtendedText();
-  //u8g2.setDrawColor(1);
   u8g2.setFontPosTop();
-  //u8g2.setFontDirection(0);
+  
 
   u8g2.clearBuffer();
   u8g2.drawStr(0, 0, "SLACK");
@@ -98,7 +94,7 @@ void setup() {
   Serial.println("Initializing SD card...");
   if (!SD.begin(SD_CS)) {
     Serial.println("ERROR - SD card initialization failed!");
-    return;    // init failed
+    return;
   }
 
   // If the data.txt file doesn't exist
