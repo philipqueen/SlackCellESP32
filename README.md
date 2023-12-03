@@ -1,7 +1,12 @@
 # SlackCellESP32
-Development for ESP32 version of SlackCell (original version by Markus Rampp - https://markusrampp.eu/SlackCell/).
+Development for ESP32 version of SlackCell.
 
-***Use SlackCellu8g2Switch.ino*** - this is the most current functioning version.
+Based on the original SlackCell by [Markus Rampp](https://markusrampp.eu/SlackCell/). Markus's version used a much more expensive microcontroller, and was optimized for driving LEDs in response to tension changes. This version is optimized to be:
+- Easy and cheap to build, by requiring very few components
+- Great for standard slackline needs (measuring your line tension for parklines or highlines)
+- Suitable for slackline science (measurement speed as fast as possible with readily available parts)
+
+First calibrate your loadcell by loading *CalibrationHeltecWifikit.ino*, and use the values displayed with your known weight to alter the calibration values in *SlackCellu8g2Switch.ino*. Then load and run the latter file with your updated values, and you have a dyno!
 
 ## Code Notes:
 Current features are displaying current and max force on integrated OLED, and writing forces to microSD.
@@ -28,7 +33,7 @@ Using other ESP32 microcontrollers may require changing the wiring and the U8G2 
 
 Making your own SlackCell requires about $100 worth of parts, a soldering iron, and very minimal soldering experience. The process is as easy as soldering the pin headers to the boards, soldering the boards and loadcell wires to the pcb, and screwing the eye bolts into the load cell.
 
-Before use, a calibration sketch must be uploaded to the microcontroller and the loadcell has to be calibrated with a known weight. The calibration data has to be changed in the slackcell code, and then it can be uploaded to the board *voila!* you have your own dynamometer!
+Before use, a calibration sketch must be uploaded to the microcontroller and the loadcell has to be calibrated with a known weight. The calibration data has to be changed in the slackcell code, and then it can be uploaded to the board - *voila!* you have your own dynamometer!
 
 ### Approximate price:
 
