@@ -8,7 +8,7 @@ Current features are displaying current and max force on integrated OLED, and wr
 
 Current sampling rate:
 - 83 Hz at resting tension/with display off (HX711 is limited to 80Hz)
-- 30 Hz with changing force
+- 30 Hz displaying changing force
 
 Recent improvements:
 - Switched to the u8g2 library to allow for a hardware I2C connection (was previously software connection)
@@ -18,10 +18,11 @@ Recent improvements:
 
 Future improvements:
 - Add BLE (Bluetooth Low Energy)/WiFi connectivity to allow app development
-- Implement dual core functionality to decrease display slowdowns
+- Run display logic on separate core from force reading and SD writing (ESP32 is dual core)
 - Set force change threshold for the display changes (0.1kN)
 
-Developed for the Heltec Wifi Kit 32 v2. Be sure not to buy the v3 version, as the pinout has changed and the PCB will not function properly. Using other ESP32 microcontrollers may require changing the U8G2 setup code.
+Developed for the Heltec Wifi Kit 32 v2. Be sure not to buy the v3 version (as is currently on amazon), as the pinout has changed and the PCB will not function properly. 
+Using other ESP32 microcontrollers may require changing the wiring and the U8G2 setup code.
 
 ## How to make a SlackCell ESP32:
 
