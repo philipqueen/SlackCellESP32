@@ -7,45 +7,41 @@ Tested with and recommended for Heltec WifiKit32 controller
 
 */
 
-#include "HX711.h" //library for loadcell amplifier
-#include <U8g2lib.h> //library for OLED
+#include "HX711.h"
+#include <TFT_eSPI.h>
+#include <SPI.h>
 
 // libraries for SD card
 #include "FS.h"
 #include "SD.h"
-#include <spi.h> //also needed for some OLEDs
+
+#define SD_CS 2
+#define SD_MOSI 26
+#define SD_MISO 27
+#define SD_SCK 25
 
 
 const long baud = 115200;
 
-// HX711 circuit wiring
-const int LOADCELL_SCK_PIN = 26;
-const int LOADCELL_DOUT_PIN = 25;
+const int LOADCELL_SCK_PIN = 33;
+const int LOADCELL_DOUT_PIN = 32;
 const long LOADCELL_OFFSET = 2330;
 const long LOADCELL_DIVIDER_N = -232;
 const long LOADCELL_DIVIDER_kg = LOADCELL_DIVIDER_N * 9.81;
 const long LOADCELL_DIVIDER_lb = LOADCELL_DIVIDER_N * 4.448;
 
-// SD Card circuit wiring
-#define SD_CS 2
-
 HX711 loadcell; //setup HX711 object
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C   u8g2(U8G2_R0, /*reset= */ 16, /*clock=*/ 15, /*data=*/ 4); //setup display connection
-
+TFT_eSPI tft = TFT_eSPI();
+SPIClass spiVspi(VSPI);
 
 unsigned long timestamp = 0;
 long maxForce = 0;
 long force = -1;
 long prevForce = -100;
 const int Switch = 22;
-//bool recording = false;
-//char prev_cmd = '0';
-
 String sdMessage;
 int readingID = 0;
-
 unsigned long timeNow = 0;
-
 
 void setup() {
   Serial.begin(baud);
@@ -53,20 +49,17 @@ void setup() {
   Serial.print("Sketch:   ");   Serial.println(__FILE__);
   Serial.print("Uploaded: ");   Serial.println(__DATE__);
 
-  // This statement will declare pin 15 as digital input 
-  pinMode(Switch, INPUT);
+  tft.init();
+  tft.setRotation(1); // Set the screen to horizontal layout
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.setTextSize(3);
 
-  u8g2.setBusClock(1000000);
-  u8g2.begin();
-  u8g2.setPowerSave(0);
-  u8g2.setFont(u8g2_font_inb21_mf);
-  u8g2.setFontPosTop();
-  
-
-  u8g2.clearBuffer();
-  u8g2.drawStr(0, 0, "SLACK");
-  u8g2.drawStr(0, 36, "CELL");
-  u8g2.sendBuffer();
+  tft.fillScreen(TFT_BLACK);
+  tft.setCursor(10, 20);
+  tft.printf("SLACK");
+  tft.setCursor(10, 60);
+  tft.printf("CELL");
 
   loadcell.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
   loadcell.set_offset(LOADCELL_OFFSET);
@@ -77,38 +70,31 @@ void setup() {
     force = 0;
   }
 
-  delay(2000);
-  u8g2.clearBuffer();
+  spiVspi.begin(SD_SCK, SD_MISO, SD_MOSI, SD_CS);
 
-  // Initialize SD card
-  SD.begin(SD_CS);  
-  if(!SD.begin(SD_CS)) {
+  if (!SD.begin(SD_CS, spiVspi)) {
     Serial.println("Card Mount Failed");
     return;
   }
+
   uint8_t cardType = SD.cardType();
-  if(cardType == CARD_NONE) {
+  if (cardType == CARD_NONE) {
     Serial.println("No SD card attached");
     return;
   }
-  Serial.println("Initializing SD card...");
-  if (!SD.begin(SD_CS)) {
-    Serial.println("ERROR - SD card initialization failed!");
-    return;
-  }
 
-  // If the data.txt file doesn't exist
-  // Create a file on the SD card and write the data labels
+  Serial.println("Initializing SD card...");
   File file = SD.open("/data.txt");
-  if(!file) {
-    Serial.println("File doens't exist");
+  if (!file) {
+    Serial.println("File doesn't exist");
     Serial.println("Creating file...");
-    writeFile(SD, "/data.txt", "Reading ID, Time (ms), Force (N) \r\n"); //move out of if statement so it separates logging sessions?
-  }
-  else {
-    Serial.println("File already exists");  
+    writeFile(SD, "/data.txt", "Reading ID, Time (ms), Force (N) \r\n");
+  } else {
+    Serial.println("File already exists");
   }
   file.close();
+
+  delay(2000);
 }
 
 void loop() {
@@ -119,37 +105,25 @@ void loop() {
     Serial.print(abs(force), 1); //prints first sigfig of force
     Serial.print(" N"); //change depending on divider used
     Serial.println();
-    int Switch_state = digitalRead(Switch);
-    if ((force != prevForce) && (Switch_state == LOW)) {
+    if ((force != prevForce)) {
         prevForce = force;
         maxForce = max(abs(force), abs(maxForce));
-        // display updates only value at a time to increase speed, privileges maxForce
-        if (maxForce == abs(force)) {
-          displayForce(maxForce, 36);
-        }
-        else {
-          displayForce(force, 0);
-        }
-      }
+
+        tft.fillRect(10, 20, 180, 30, TFT_BLACK);
+        tft.setCursor(10, 20); // Set x, y position in pixels
+        tft.setTextColor(TFT_BLUE, TFT_BLACK);
+        tft.printf("live: %ld", force);
+
+        tft.fillRect(10, 60, 180, 30, TFT_BLACK); // need to make this extend further right
+        tft.setCursor(10, 60);
+        tft.setTextColor(TFT_GREEN, TFT_BLACK);
+        tft.printf("peak: %ld", maxForce);
+    }
     writeSD(readingID, timeNow, force);
     readingID += 1;
-  }
-  
-}
 
-void displayForce(long force, uint8_t line) {
-  // Maximum number of letters the screen can display in one row
-  uint8_t maxLength = 6;
-  // Long range is +-2,147,483,648
-  char bufferF[12] = {};
-  ltoa(force, bufferF, 10);
-  // align right by padding with spaces
-  char bufferLCD[maxLength + 1] = {' ', ' ', ' ', ' ', ' ', ' ', '\0'};
-  for (int i = 0; i < strlen(bufferF); i++) {
-    bufferLCD[maxLength - strlen(bufferF) + i] = bufferF[i];
-  }
-  u8g2.drawStr(0, line, bufferLCD);
-  u8g2.sendBuffer();
+    delay(100);
+  } 
 }
 
 void writeSD(int readingID, long timeNow, long force) {
@@ -190,3 +164,4 @@ void appendFile(fs::FS &fs, const char * path, const char * message) {
   }
   file.close();
 }
+
