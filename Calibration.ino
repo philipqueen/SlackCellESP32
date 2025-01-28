@@ -16,14 +16,11 @@
 #include <stdio.h>
 #include "HX711.h"
 
-//      D2  ||  SCK   HX711
-//      D4  ||  DOUT  HX711
-
 // HX711 circuit wiring
-const int LOADCELL_DOUT_PIN = 25;
-const int LOADCELL_SCK_PIN = 26;
+const int LOADCELL_DOUT_PIN = 32;
+const int LOADCELL_SCK_PIN = 33;
 const long LOADCELL_OFFSET = 2900;
-// divider to get the force in the right units. I'm using logical units [N]
+// divider to get the force in the right units. Uses logical units [N]
 const long LOADCELL_DIVIDER_N = -217;
 const long LOADCELL_DIVIDER_kg = LOADCELL_DIVIDER_N * 9.81;
 const long LOADCELL_DIVIDER_lb = LOADCELL_DIVIDER_N * 4.448;
@@ -60,7 +57,6 @@ void loop() {
     //withDivider should equal calibration weight
     Serial.println("     Raw  withOffset  withDivider  recommendedDivider");
     char string [60];
-    // doubles with sprintf didn't work :(
     sprintf(string,"%8ld  %10ld  %11ld", value, value - LOADCELL_OFFSET, withDivider);
     Serial.print(string);
     Serial.print("         ");    

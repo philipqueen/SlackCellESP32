@@ -1,12 +1,3 @@
-/*
-
-Based on Slackcell code by Markus Rampp (copyright 2020)
-
-Designed for use with ESP32 using SSD1306_128x64 OLED Display
-Tested with and recommended for Heltec WifiKit32 controller
-
-*/
-
 #include "HX711.h"
 #include <TFT_eSPI.h>
 #include <SPI.h>
@@ -20,6 +11,11 @@ Tested with and recommended for Heltec WifiKit32 controller
 #define SD_MISO 27
 #define SD_SCK 25
 
+#define CSV_NAME "/slackcell.txt"
+
+#define N_TO_KG 9.81
+#define N_TO_LB 4.448
+
 
 const long baud = 115200;
 
@@ -27,10 +23,10 @@ const int LOADCELL_SCK_PIN = 33;
 const int LOADCELL_DOUT_PIN = 32;
 const long LOADCELL_OFFSET = 2330;
 const long LOADCELL_DIVIDER_N = -232;
-const long LOADCELL_DIVIDER_kg = LOADCELL_DIVIDER_N * 9.81;
-const long LOADCELL_DIVIDER_lb = LOADCELL_DIVIDER_N * 4.448;
+const long LOADCELL_DIVIDER_kg = LOADCELL_DIVIDER_N * N_TO_KG;
+const long LOADCELL_DIVIDER_lb = LOADCELL_DIVIDER_N * N_TO_LB;
 
-HX711 loadcell; //setup HX711 object
+HX711 loadcell;
 TFT_eSPI tft = TFT_eSPI();
 SPIClass spiVspi(VSPI);
 
@@ -39,9 +35,10 @@ long maxForce = 0;
 long force = -1;
 long prevForce = -100;
 const int Switch = 22;
-String sdMessage;
 int readingID = 0;
 unsigned long timeNow = 0;
+String sdMessage;
+
 
 void setup() {
   Serial.begin(baud);
@@ -50,12 +47,11 @@ void setup() {
   Serial.print("Uploaded: ");   Serial.println(__DATE__);
 
   tft.init();
-  tft.setRotation(1); // Set the screen to horizontal layout
+  tft.setRotation(1); // horizontal layout
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.setTextSize(3);
 
-  tft.fillScreen(TFT_BLACK);
   tft.setCursor(10, 20);
   tft.printf("SLACK");
   tft.setCursor(10, 60);
@@ -70,9 +66,13 @@ void setup() {
     force = 0;
   }
 
-  spiVspi.begin(SD_SCK, SD_MISO, SD_MOSI, SD_CS);
+  sdMessage.reserve(60);
 
-  if (!SD.begin(SD_CS, spiVspi)) {
+  spiVspi.begin(SD_SCK, SD_MISO, SD_MOSI, SD_CS);  // prevent SD from interfering with screen HSPI connection
+
+  delay(2000);
+
+  if (!SD.begin(SD_CS, spiVspi, 4000000)) {
     Serial.println("Card Mount Failed");
     return;
   }
@@ -84,33 +84,28 @@ void setup() {
   }
 
   Serial.println("Initializing SD card...");
-  File file = SD.open("/data.txt");
+  File file = SD.open(CSV_NAME);
   if (!file) {
     Serial.println("File doesn't exist");
     Serial.println("Creating file...");
-    writeFile(SD, "/data.txt", "Reading ID, Time (ms), Force (N) \r\n");
   } else {
     Serial.println("File already exists");
   }
+  writeFile(SD, CSV_NAME, "Reading ID, Time (ms), Force (N) \n");
   file.close();
-
-  delay(2000);
 }
 
 void loop() {
   if (loadcell.is_ready()) {
-    Serial.print("Reading: ");
     force = loadcell.get_units(1);
     timeNow = millis(); //milliseconds since startup
-    Serial.print(abs(force), 1); //prints first sigfig of force
-    Serial.print(" N"); //change depending on divider used
-    Serial.println();
+    Serial.printf("Reading: %ld N\n", abs(force));
     if ((force != prevForce)) {
         prevForce = force;
-        maxForce = max(abs(force), abs(maxForce));
+        maxForce = max(force, maxForce);
 
         tft.fillRect(10, 20, 180, 30, TFT_BLACK);
-        tft.setCursor(10, 20); // Set x, y position in pixels
+        tft.setCursor(10, 20); // x, y position
         tft.setTextColor(TFT_BLUE, TFT_BLACK);
         tft.printf("live: %ld", force);
 
@@ -127,8 +122,14 @@ void loop() {
 }
 
 void writeSD(int readingID, long timeNow, long force) {
-  sdMessage = String(readingID) + "," + String(timeNow) + "," + String(force) + "\r\n";
-  appendFile(SD, "/data.txt", sdMessage.c_str());
+  sdMessage = "";
+  sdMessage += readingID;
+  sdMessage += ",";
+  sdMessage += timeNow;
+  sdMessage += ",";
+  sdMessage += force;
+  sdMessage += "\n";
+  appendFile(SD, CSV_NAME, sdMessage.c_str());
 }
 
 // Write to the SD card (DON'T MODIFY THIS FUNCTION)
@@ -164,4 +165,3 @@ void appendFile(fs::FS &fs, const char * path, const char * message) {
   }
   file.close();
 }
-
