@@ -91,7 +91,7 @@ void setup() {
   } else {
     Serial.println("File already exists");
   }
-  writeFile(SD, CSV_NAME, "Reading ID, Time (ms), Force (N) \n");
+  appendFile(SD, CSV_NAME, "Reading ID, Time (ms), Force (N) \n");
   file.close();
 }
 
