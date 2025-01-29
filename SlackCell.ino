@@ -16,6 +16,16 @@
 #define N_TO_KG 9.81
 #define N_TO_LB 4.448
 
+#define SD_MESSAGE_LENGTH 60
+#define TARE_AVERAGE_TIME 30
+#define MAX_TARE_VALUE 30
+#define SD_START_DELAY 2000
+
+#define X_CURSOR_START 10
+#define LIVE_Y_CURSOR_START 20
+#define PEAK_Y_CURSOR_START 60
+#define FILL_RECT_WIDTH 180
+#define FILL_RECT_HEIGHT 30
 
 const long baud = 115200;
 
@@ -34,7 +44,6 @@ unsigned long timestamp = 0;
 long maxForce = 0;
 long force = -1;
 long prevForce = -100;
-const int Switch = 22;
 int readingID = 0;
 unsigned long timeNow = 0;
 String sdMessage;
@@ -52,25 +61,25 @@ void setup() {
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.setTextSize(3);
 
-  tft.setCursor(10, 20);
+  tft.setCursor(X_CURSOR_START, LIVE_Y_CURSOR_START);
   tft.printf("SLACK");
-  tft.setCursor(10, 60);
+  tft.setCursor(X_CURSOR_START, PEAK_Y_CURSOR_START);
   tft.printf("CELL");
 
   loadcell.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
   loadcell.set_offset(LOADCELL_OFFSET);
   loadcell.set_scale(LOADCELL_DIVIDER_N);
-  force = loadcell.get_units(30);
-  if (force < 30) {
+  force = loadcell.get_units(TARE_AVERAGE_TIME);
+  if (force < MAX_TARE_VALUE) {
     loadcell.tare();
     force = 0;
   }
 
-  sdMessage.reserve(60);
+  sdMessage.reserve(SD_MESSAGE_LENGTH);
 
   spiVspi.begin(SD_SCK, SD_MISO, SD_MOSI, SD_CS);  // prevent SD from interfering with screen HSPI connection
 
-  delay(2000);
+  delay(SD_START_DELAY);
 
   if (!SD.begin(SD_CS, spiVspi, 4000000)) {
     Serial.println("Card Mount Failed");
@@ -104,20 +113,18 @@ void loop() {
         prevForce = force;
         maxForce = max(force, maxForce);
 
-        tft.fillRect(10, 20, 180, 30, TFT_BLACK);
-        tft.setCursor(10, 20); // x, y position
+        tft.fillRect(X_CURSOR_START, LIVE_Y_CURSOR_START, FILL_RECT_WIDTH, FILL_RECT_HEIGHT, TFT_BLACK);
+        tft.setCursor(X_CURSOR_START, LIVE_Y_CURSOR_START); // x, y position
         tft.setTextColor(TFT_BLUE, TFT_BLACK);
         tft.printf("live: %ld", force);
 
-        tft.fillRect(10, 60, 180, 30, TFT_BLACK); // need to make this extend further right
-        tft.setCursor(10, 60);
+        tft.fillRect(X_CURSOR_START, PEAK_Y_CURSOR_START, FILL_RECT_WIDTH, FILL_RECT_HEIGHT, TFT_BLACK); // need to make this extend further right
+        tft.setCursor(X_CURSOR_START, PEAK_Y_CURSOR_START);
         tft.setTextColor(TFT_GREEN, TFT_BLACK);
         tft.printf("peak: %ld", maxForce);
     }
     writeSD(readingID, timeNow, force);
     readingID += 1;
-
-    delay(100);
   } 
 }
 
