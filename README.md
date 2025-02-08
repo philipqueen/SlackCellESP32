@@ -63,7 +63,7 @@ This is a specific version of the TTGO T-Display. Other versions of the same boa
 
 For slackline purposes, an S Beam load cell rated to 2000 kg is recommended. Always back up the load cell with a stronger component, and do not exceed its rated force. Amazon sourcing of these is sporadic, please file an issue if the link above is incorrect.
 
-3. HX711 Loadcell Amplifier: [Buy WWZMDiB HX711 on Amazon](https://www.amazon.com/AiTrip-Weighing-Conversion-Sensors-Microcontroller/dp/B07SGPX7ZH)
+3. HX711 Loadcell Amplifier: [Buy Comimark HX711 on Amazon]([https://www.amazon.com/AiTrip-Weighing-Conversion-Sensors-Microcontroller/dp/B07SGPX7ZH](https://www.amazon.com/dp/B07X2JZRKB))
 
 This comes in a pack of 4. Buying this version ensures the amplifier fits properly into the PCB, other HX711s may not fit in the PCB.
 
