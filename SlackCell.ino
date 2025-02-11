@@ -28,6 +28,8 @@
 #define FILL_RECT_HEIGHT 30
 
 const long baud = 115200;
+TaskHandle_t DisplayTask;
+QueueHandle_t queue;
 
 const int LOADCELL_SCK_PIN = 33;
 const int LOADCELL_DOUT_PIN = 32;
@@ -43,6 +45,7 @@ SPIClass spiVspi(VSPI);
 unsigned long timestamp = 0;
 long maxForce = 0;
 long force = -1;
+long reading = -1;
 long prevForce = -100;
 int readingID = 0;
 unsigned long timeNow = 0;
@@ -75,6 +78,21 @@ void setup() {
     force = 0;
   }
 
+  queue = xQueueCreate(5, sizeof(long));
+
+  if(queue == NULL){
+    Serial.println("Error creating the queue");
+  }
+
+  xTaskCreatePinnedToCore(
+    Display, /* Function to implement the task */
+    "DisplayTask", /* Name of the task */
+    10000,  /* Stack size in words */
+    NULL,  /* Task input parameter */
+    0,  /* Priority of the task */
+    &DisplayTask,  /* Task handle. */
+    0); /* Core where the task should run */
+
   sdMessage.reserve(SD_MESSAGE_LENGTH);
 
   spiVspi.begin(SD_SCK, SD_MISO, SD_MOSI, SD_CS);  // prevent SD from interfering with screen HSPI connection
@@ -106,26 +124,35 @@ void setup() {
 
 void loop() {
   if (loadcell.is_ready()) {
-    force = loadcell.get_units(1);
+    reading = loadcell.get_units(1);
     timeNow = millis(); //milliseconds since startup
-    Serial.printf("Reading: %ld N\n", abs(force));
-    if ((force != prevForce)) {
-        prevForce = force;
-        maxForce = max(force, maxForce);
-
-        tft.fillRect(X_CURSOR_START, LIVE_Y_CURSOR_START, FILL_RECT_WIDTH, FILL_RECT_HEIGHT, TFT_BLACK);
-        tft.setCursor(X_CURSOR_START, LIVE_Y_CURSOR_START); // x, y position
-        tft.setTextColor(TFT_BLUE, TFT_BLACK);
-        tft.printf("live: %ld", force);
-
-        tft.fillRect(X_CURSOR_START, PEAK_Y_CURSOR_START, FILL_RECT_WIDTH, FILL_RECT_HEIGHT, TFT_BLACK); // need to make this extend further right
-        tft.setCursor(X_CURSOR_START, PEAK_Y_CURSOR_START);
-        tft.setTextColor(TFT_GREEN, TFT_BLACK);
-        tft.printf("peak: %ld", maxForce);
-    }
-    writeSD(readingID, timeNow, force);
+    xQueueSend(queue, &reading, portMAX_DELAY);
+    Serial.printf("Reading: %ld N\n", abs(reading));
+    writeSD(readingID, timeNow, reading);
     readingID += 1;
   } 
+}
+
+void Display(void * parameter) {
+  for(;;){
+    Serial.print("checking queue\n");
+    xQueueReceive(queue, &force, portMAX_DELAY);
+    Serial.println(force);
+    if ((force != prevForce)) {
+      prevForce = force;
+      maxForce = max(force, maxForce);
+
+      tft.fillRect(X_CURSOR_START, LIVE_Y_CURSOR_START, FILL_RECT_WIDTH, FILL_RECT_HEIGHT, TFT_BLACK);
+      tft.setCursor(X_CURSOR_START, LIVE_Y_CURSOR_START); // x, y position
+      tft.setTextColor(TFT_BLUE, TFT_BLACK);
+      tft.printf("live: %ld", force);
+
+      tft.fillRect(X_CURSOR_START, PEAK_Y_CURSOR_START, FILL_RECT_WIDTH, FILL_RECT_HEIGHT, TFT_BLACK); // need to make this extend further right
+      tft.setCursor(X_CURSOR_START, PEAK_Y_CURSOR_START);
+      tft.setTextColor(TFT_GREEN, TFT_BLACK);
+      tft.printf("peak: %ld", maxForce);
+    }
+  }
 }
 
 void writeSD(int readingID, long timeNow, long force) {
