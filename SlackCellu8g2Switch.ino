@@ -3,7 +3,7 @@
 Based on Slackcell code by Markus Rampp (copyright 2020)
 
 Designed for use with ESP32 using SSD1306_128x64 OLED Display
-Tested with and recommended for Heltec WifiKit32 controller
+Tested with and recommended for Heltec WifiKit32 V2 or V3 controller
 
 */
 
@@ -13,33 +13,70 @@ Tested with and recommended for Heltec WifiKit32 controller
 // libraries for SD card
 #include "FS.h"
 #include "SD.h"
-#include <spi.h> //also needed for some OLEDs
 
 
 const long baud = 115200;
 
-// HX711 circuit wiring
-const int LOADCELL_SCK_PIN = 26;
-const int LOADCELL_DOUT_PIN = 25;
-const long LOADCELL_OFFSET = 2330;
-const long LOADCELL_DIVIDER_N = -232;
-const long LOADCELL_DIVIDER_kg = LOADCELL_DIVIDER_N * 9.81;
-const long LOADCELL_DIVIDER_lb = LOADCELL_DIVIDER_N * 4.448;
+//Change to the board you want to use, and check the wiring defined below
+//#define BOARD_HELTEC_V2
+#define BOARD_HELTEC_V3
 
+#if defined(BOARD_HELTEC_V2)
+// internal OLED wiring
+const uint8_t OLED_RESET_PIN = 16;
+const uint8_t OLED_CLOCK_PIN = 15;
+const uint8_t OLED_DATA_PIN = 4;
+#define OLED_ROTATION U8G2_R0
 // SD Card circuit wiring
-#define SD_CS 2
+// With the Heltec V2 the board default SPI pins are used SCK = 18, MISO = 19, and MOSI = 23
+const uint8_t SD_CS_PIN = 2;
+// HX711 circuit wiring
+const uint8_t LOADCELL_SCK_PIN = 26;
+const uint8_t LOADCELL_DOUT_PIN = 25;
+//Controls
+const uint8_t SWITCH_PIN = 22;
+const uint8_t SWITCH_MODE = INPUT;
+
+#elif defined(BOARD_HELTEC_V3)
+// internal OLED wiring
+const uint8_t OLED_CLOCK_PIN = 18;
+const uint8_t OLED_RESET_PIN = 21;
+const uint8_t OLED_DATA_PIN = 17;
+#define OLED_ROTATION U8G2_R2
+// SD Card circuit wiring
+// The Heltec V3 allows usage of any GPIO pins as SPI, these are selected to be short to connect on a prototype grid pcb
+#define CUSTOM_SPI_PINS
+const uint8_t SD_MISO_PIN = 26;
+const uint8_t SD_MOSI_PIN = 48;
+const uint8_t SD_SCK_PIN =  47;
+const uint8_t SD_CS_PIN = 33;
+// HX711 circuit wiring
+const uint8_t LOADCELL_SCK_PIN = 40;
+const uint8_t LOADCELL_DOUT_PIN = 41;
+//Controls
+const uint8_t SWITCH_PIN = 2;
+const uint8_t SWITCH_MODE = INPUT_PULLUP;
+#endif
+
+const long LOADCELL_OFFSET = 2330;
+const float LOADCELL_DIVIDER_N = -232;
+const float LOADCELL_DIVIDER_kg = LOADCELL_DIVIDER_N * 9.81;
+const float LOADCELL_DIVIDER_lb = LOADCELL_DIVIDER_N * 4.448;
 
 HX711 loadcell; //setup HX711 object
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C   u8g2(U8G2_R0, /*reset= */ 16, /*clock=*/ 15, /*data=*/ 4); //setup display connection
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C   u8g2(U8G2_R2, OLED_RESET_PIN, OLED_CLOCK_PIN, OLED_DATA_PIN); //setup display connection
 
 
 unsigned long timestamp = 0;
 long maxForce = 0;
 long force = -1;
 long prevForce = -100;
-const int Switch = 22;
-//bool recording = false;
-//char prev_cmd = '0';
+
+// TODO: should be selectable with buttons, maybe a small menu?
+bool recording = true;
+// Set in init_sd, signals readiness to use the data.txt file on the sd.
+// This allows the program to run without an sd card connected, without trying to write to it all the time.
+bool sd_ready = false;
 
 String sdMessage;
 int readingID = 0;
@@ -53,15 +90,15 @@ void setup() {
   Serial.print("Sketch:   ");   Serial.println(__FILE__);
   Serial.print("Uploaded: ");   Serial.println(__DATE__);
 
-  // This statement will declare pin 15 as digital input 
-  pinMode(Switch, INPUT);
+  // This statement will declare pin 15 as digital input
+  pinMode(SWITCH_PIN, SWITCH_MODE);
 
   u8g2.setBusClock(1000000);
   u8g2.begin();
   u8g2.setPowerSave(0);
   u8g2.setFont(u8g2_font_inb21_mf);
   u8g2.setFontPosTop();
-  
+
 
   u8g2.clearBuffer();
   u8g2.drawStr(0, 0, "SLACK");
@@ -77,12 +114,29 @@ void setup() {
     force = 0;
   }
 
+  init_sd();
+
+  //This might seem like a unnecessary start up delay, just to see "Slack Cell" longer...
+  //but it also stabilizes the signal levels to not have multiple kilos of maxForce just from booting up.
   delay(2000);
   u8g2.clearBuffer();
 
+}
+
+
+// Connects to the sd card via spi and makes sure the file used for data logging exists.
+// If successful sd_ready is set to true
+void init_sd(){
+  if(sd_ready)
+    //already initialized, skipping
+    return;
+
+  #ifdef CUSTOM_SPI_PINS
+  SPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
+  #endif
+
   // Initialize SD card
-  SD.begin(SD_CS);  
-  if(!SD.begin(SD_CS)) {
+  if(!SD.begin(SD_CS_PIN)) {
     Serial.println("Card Mount Failed");
     return;
   }
@@ -92,7 +146,7 @@ void setup() {
     return;
   }
   Serial.println("Initializing SD card...");
-  if (!SD.begin(SD_CS)) {
+  if (!SD.begin(SD_CS_PIN)) {
     Serial.println("ERROR - SD card initialization failed!");
     return;
   }
@@ -106,9 +160,12 @@ void setup() {
     writeFile(SD, "/data.txt", "Reading ID, Time (ms), Force (N) \r\n"); //move out of if statement so it separates logging sessions?
   }
   else {
-    Serial.println("File already exists");  
+    Serial.println("File already exists");
   }
   file.close();
+
+  sd_ready = true;
+  // TODO: display a striked out SD in one corner if not available. But don't do it here, because the display is cleared afterwards
 }
 
 void loop() {
@@ -119,22 +176,24 @@ void loop() {
     Serial.print(abs(force), 1); //prints first sigfig of force
     Serial.print(" N"); //change depending on divider used
     Serial.println();
-    int Switch_state = digitalRead(Switch);
+    int Switch_state = digitalRead(SWITCH_PIN);
     if ((force != prevForce) && (Switch_state == LOW)) {
-        prevForce = force;
-        maxForce = max(abs(force), abs(maxForce));
-        // display updates only value at a time to increase speed, privileges maxForce
+          prevForce = force;
+          maxForce = max(abs(force), abs(maxForce));
+          // display updates only value at a time to increase speed, privileges maxForce
         if (maxForce == abs(force)) {
-          displayForce(maxForce, 36);
-        }
+            displayForce(maxForce, 36);
+          }
         else {
           displayForce(force, 0);
         }
-      }
-    writeSD(readingID, timeNow, force);
-    readingID += 1;
   }
-  
+
+    if(sd_ready && recording){
+      writeSD(readingID++, timeNow, force);
+    }
+  }
+
 }
 
 void displayForce(long force, uint8_t line) {

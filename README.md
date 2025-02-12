@@ -26,7 +26,7 @@ Future improvements:
 - Run display logic on separate core from force reading and SD writing (ESP32 is dual core)
 - Set force change threshold for the display changes (0.1kN)
 
-Developed for the Heltec Wifi Kit 32 v2. Be sure not to buy the v3 version (as is currently on amazon), as the pinout has changed and the PCB will not function properly. 
+Developed for the Heltec Wifi Kit 32 v2/v3.
 Using other ESP32 microcontrollers may require changing the wiring and the U8G2 setup code.
 
 ## How to make a SlackCell ESP32:
@@ -39,7 +39,7 @@ Before use, a calibration sketch must be uploaded to the microcontroller and the
 
 The price of the PCBs are still being worked out as they are developed, but they will likely be quite cheap compared to the other costs. The price of all other components is subject to change, but I've included a rough pricing estimate for project planning.
 
-- Heltec Wifi Kit 32 v2: ~$20
+- Heltec Wifi Kit 32 v2 or v3: ~$20
 - S Beam Load Cell: ~$40
 - HX711 Loadcell Amplifier: ~$7 (3 pack)
 - MicroSD Card Reader: ~$7 (5 pack)
