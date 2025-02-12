@@ -7,19 +7,29 @@ Tested with and recommended for Heltec WifiKit32 V2 or V3 controller
 
 */
 
+#include <Arduino.h>
+
 #include "HX711.h" //library for loadcell amplifier
-#include <U8g2lib.h> //library for OLED
+#include "U8g2lib.h" //library for OLED
 
 // libraries for SD card
 #include "FS.h"
 #include "SD.h"
 
+//Function prototypes (needed for Platform IO and every other normal c++ file, its just the Arduino IDE uses magic to get rid of them)
+void init_sd();
+void displayForce(long force, uint8_t line);
+void writeSD(int readingID, long timeNow, long force);
+void writeFile(fs::FS &fs, const char * path, const char * message);
+void appendFile(fs::FS &fs, const char * path, const char * message);
+
 
 const long baud = 115200;
 
 //Change to the board you want to use, and check the wiring defined below
+//These are set by the Platform IO build system
 //#define BOARD_HELTEC_V2
-#define BOARD_HELTEC_V3
+//#define BOARD_HELTEC_V3
 
 #if defined(BOARD_HELTEC_V2)
 // internal OLED wiring

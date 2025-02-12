@@ -29,6 +29,14 @@ Future improvements:
 Developed for the Heltec Wifi Kit 32 v2/v3.
 Using other ESP32 microcontrollers may require changing the wiring and the U8G2 setup code.
 
+## How to use the code
+- install VSCode
+- install Platform IO plugin in VSCode
+- open this repo in VSCode
+- open the Platform IO plugin tab
+- find the "Project Tasks"
+    hit "Upload and Monitor" in the submenu of the board you are using.
+
 ## How to make a SlackCell ESP32:
 
 Making your own SlackCell requires about $100 worth of parts, a soldering iron, and very minimal soldering experience. The process is as easy as soldering the pin headers to the boards, soldering the boards and loadcell wires to the pcb, and screwing the eye bolts into the load cell.
