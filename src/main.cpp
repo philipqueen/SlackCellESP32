@@ -25,6 +25,10 @@ void writeSD(int readingID, long timeNow, long force);
 void writeFile(fs::FS &fs, const char * path, const char * message);
 void appendFile(fs::FS &fs, const char * path, const char * message);
 
+#ifdef USE_VEXT
+void VextON(void);
+void VextOFF(void);
+#endif
 
 const long baud = 115200;
 
@@ -60,7 +64,12 @@ void setup() {
   Serial.print("Sketch:   ");   Serial.println(__FILE__);
   Serial.print("Uploaded: ");   Serial.println(__DATE__);
 
-  // This statement will declare pin 15 as digital input
+#ifdef USE_VEXT
+  //turn on external defices
+  VextON();
+#endif //USE_VEXT
+
+  // Setting up the Switch
   pinMode(SWITCH_PIN, SWITCH_MODE);
 
   u8g2.setBusClock(1000000);
@@ -219,3 +228,20 @@ void appendFile(fs::FS &fs, const char * path, const char * message) {
   }
   file.close();
 }
+
+#ifdef USE_VEXT
+//Turn external power supply on
+void VextON(void)
+{
+  pinMode(Vext,OUTPUT);
+  digitalWrite(Vext, LOW);
+  
+}
+
+//Turn external power supply off
+void VextOFF(void) //Vext default OFF
+{
+  pinMode(Vext,OUTPUT);
+  digitalWrite(Vext, HIGH);
+}
+#endif //USE_VEXT

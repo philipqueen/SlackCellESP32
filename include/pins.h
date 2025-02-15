@@ -1,6 +1,9 @@
 /* File pins.h  
 This file contains the pin definitions for the different supported boards. 
-The BOARD_xxxx define is set by the PLATFORM IO build system, look in platformio.ini under build-flags of your board.
+
+BOARD_xxxx: This define is set by the PLATFORM IO build system, look in platformio.ini under build-flags of your board.
+USE_VEXT: if defined, enables usage of switchable external voltage. Only enable if support on your specific board
+    Using this supply for connected devices, like HX711 and SD card will reduce power consumption in deep sleep
 */
 
 //Wrapper to include this file only once
@@ -23,6 +26,9 @@ const uint8_t LOADCELL_DOUT_PIN = 25;
 const uint8_t SWITCH_PIN = 22;
 const uint8_t SWITCH_MODE = INPUT;
 
+//The Heltec Wifi Kit V2 has this feature, but it is not wired to use it on the custom pcb
+//#define USE_VEXT
+
 #elif defined(BOARD_HELTEC_V3)
 // internal OLED wiring
 const uint8_t OLED_CLOCK_PIN = 18;
@@ -42,5 +48,8 @@ const uint8_t LOADCELL_DOUT_PIN = 41;
 //Controls
 const uint8_t SWITCH_PIN = 2;
 const uint8_t SWITCH_MODE = INPUT_PULLUP;
+
+#define USE_VEXT
+
 #endif
 #endif /* !PINS_SEEN */
