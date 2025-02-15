@@ -10,17 +10,16 @@ Tested with and recommended for Heltec WifiKit32 V2 or V3 controller
 #include <Arduino.h>
 
 #include "HX711.h" //library for loadcell amplifier
-#include "U8g2lib.h" //library for OLED
 
 // libraries for SD card
 #include "FS.h"
 #include "SD.h"
 
 #include "pins.h"
+#include "display.h"
 
 //Function prototypes (needed for Platform IO and every other normal c++ file, its just the Arduino IDE uses magic to get rid of them)
 void init_sd();
-void displayForce(long force, uint8_t line);
 void writeSD(int readingID, long timeNow, long force);
 void writeFile(fs::FS &fs, const char * path, const char * message);
 void appendFile(fs::FS &fs, const char * path, const char * message);
@@ -38,8 +37,6 @@ const float LOADCELL_DIVIDER_kg = LOADCELL_DIVIDER_N * 9.81;
 const float LOADCELL_DIVIDER_lb = LOADCELL_DIVIDER_N * 4.448;
 
 HX711 loadcell; //setup HX711 object
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C   u8g2(U8G2_R2, OLED_RESET_PIN, OLED_CLOCK_PIN, OLED_DATA_PIN); //setup display connection
-
 
 unsigned long timestamp = 0;
 long maxForce = 0;
@@ -65,24 +62,14 @@ void setup() {
   Serial.print("Uploaded: ");   Serial.println(__DATE__);
 
 #ifdef USE_VEXT
-  //turn on external defices
+  //turn on external devices
   VextON();
 #endif //USE_VEXT
 
   // Setting up the Switch
   pinMode(SWITCH_PIN, SWITCH_MODE);
 
-  u8g2.setBusClock(1000000);
-  u8g2.begin();
-  u8g2.setPowerSave(0);
-  u8g2.setFont(u8g2_font_inb21_mf);
-  u8g2.setFontPosTop();
-
-
-  u8g2.clearBuffer();
-  u8g2.drawStr(0, 0, "SLACK");
-  u8g2.drawStr(0, 36, "CELL");
-  u8g2.sendBuffer();
+  displayInit();
 
   loadcell.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
   loadcell.set_offset(LOADCELL_OFFSET);
@@ -98,8 +85,7 @@ void setup() {
   //This might seem like a unnecessary start up delay, just to see "Slack Cell" longer...
   //but it also stabilizes the signal levels to not have multiple kilos of maxForce just from booting up.
   delay(2000);
-  u8g2.clearBuffer();
-
+  displayClearBuffer();
 }
 
 
@@ -161,10 +147,10 @@ void loop() {
           maxForce = max(abs(force), abs(maxForce));
           // display updates only value at a time to increase speed, privileges maxForce
         if (maxForce == abs(force)) {
-            displayForce(maxForce, 36);
+            displayMaxForce(maxForce);
           }
         else {
-          displayForce(force, 0);
+          displayForce(force);
         }
   }
 
@@ -173,21 +159,6 @@ void loop() {
     }
   }
 
-}
-
-void displayForce(long force, uint8_t line) {
-  // Maximum number of letters the screen can display in one row
-  uint8_t maxLength = 6;
-  // Long range is +-2,147,483,648
-  char bufferF[12] = {};
-  ltoa(force, bufferF, 10);
-  // align right by padding with spaces
-  char bufferLCD[maxLength + 1] = {' ', ' ', ' ', ' ', ' ', ' ', '\0'};
-  for (int i = 0; i < strlen(bufferF); i++) {
-    bufferLCD[maxLength - strlen(bufferF) + i] = bufferF[i];
-  }
-  u8g2.drawStr(0, line, bufferLCD);
-  u8g2.sendBuffer();
 }
 
 void writeSD(int readingID, long timeNow, long force) {
