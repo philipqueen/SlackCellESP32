@@ -21,7 +21,8 @@
 
 //Change to the board you want to use, and check the wiring defined below
 //#define BOARD_HELTEC_V2
-#define BOARD_HELTEC_V3
+// #define BOARD_HELTEC_V3
+#define BOARD_TTGO_DISPLAY
 
 #if defined(BOARD_HELTEC_V2)
 // HX711 circuit wiring
@@ -33,6 +34,11 @@ const uint8_t LOADCELL_SCK_PIN = 26;
 const uint8_t LOADCELL_DOUT_PIN = 41;
 const uint8_t LOADCELL_SCK_PIN = 40;
 #endif
+
+#elif defined(BOARD_TTGO_DISPLAY)
+// HX711 circuit wiring
+const uint8_t LOADCELL_DOUT_PIN = 32;
+const uint8_t LOADCELL_SCK_PIN = 33;
 
 const long LOADCELL_OFFSET = 2900;
 

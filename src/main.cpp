@@ -18,6 +18,14 @@ Tested with and recommended for Heltec WifiKit32 V2 or V3 controller
 #include "pins.h"
 #include "display.h"
 
+#define CSV_NAME "/slackcell.txt" // TODO: not sure if these should live in another file
+#define CSV_HEADER "Reading ID, Time (ms), Force (N) \r\n"
+#define SD_MESSAGE_LENGTH 60
+#define SD_START_DELAY 2000
+
+#define TARE_AVERAGE_TIME 30
+#define MAX_TARE_VALUE 30
+
 //Function prototypes (needed for Platform IO and every other normal c++ file, its just the Arduino IDE uses magic to get rid of them)
 void init_sd();
 void writeSD(int readingID, long timeNow, long force);
@@ -27,6 +35,10 @@ void appendFile(fs::FS &fs, const char * path, const char * message);
 #ifdef USE_VEXT
 void VextON(void);
 void VextOFF(void);
+#endif
+
+#ifdef USE_VSPI
+SPIClass spiVspi(VSPI);
 #endif
 
 const long baud = 115200;
@@ -74,17 +86,22 @@ void setup() {
   loadcell.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
   loadcell.set_offset(LOADCELL_OFFSET);
   loadcell.set_scale(LOADCELL_DIVIDER_N);
-  force = loadcell.get_units(30);
-  if (force < 30) {
+  force = loadcell.get_units(TARE_AVERAGE_TIME);
+  if (force < MAX_TARE_VALUE) {
     loadcell.tare();
     force = 0;
   }
 
+  // TODO: initialiaze queues
+
+  // TODO: initialize tasks
+
   init_sd();
 
   //This might seem like a unnecessary start up delay, just to see "Slack Cell" longer...
-  //but it also stabilizes the signal levels to not have multiple kilos of maxForce just from booting up.
-  delay(2000);
+  //but it also stabilizes the signal levels to not have multiple kilos of maxForce just from booting up...
+  //and gives the SD card time to initialize
+  delay(SD_START_DELAY);
   displayClearBuffer();
 }
 
@@ -96,8 +113,10 @@ void init_sd(){
     //already initialized, skipping
     return;
 
+  sdMessage.reserve(SD_MESSAGE_LENGTH);
+
   #ifdef CUSTOM_SPI_PINS
-  SPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
+  SPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN); // TODO: abstract this to account for VSPI use
   #endif
 
   // Initialize SD card
@@ -122,11 +141,11 @@ void init_sd(){
   if(!file) {
     Serial.println("File doens't exist");
     Serial.println("Creating file...");
-    writeFile(SD, "/data.txt", "Reading ID, Time (ms), Force (N) \r\n"); //move out of if statement so it separates logging sessions?
   }
   else {
     Serial.println("File already exists");
   }
+  appedFile(SD, CSV_NAME, CSV_HEADER);
   file.close();
 
   sd_ready = true;
@@ -162,8 +181,14 @@ void loop() {
 }
 
 void writeSD(int readingID, long timeNow, long force) {
-  sdMessage = String(readingID) + "," + String(timeNow) + "," + String(force) + "\r\n";
-  appendFile(SD, "/data.txt", sdMessage.c_str());
+  sdMessage = "";
+  sdMessage += readingID;
+  sdMessage += ",";
+  sdMessage += timeNow;
+  sdMessage += ",";
+  sdMessage += force;
+  sdMessage += "\n";
+  appendFile(SD, CSV_NAME, sdMessage.c_str());
 }
 
 // Write to the SD card (DON'T MODIFY THIS FUNCTION)
