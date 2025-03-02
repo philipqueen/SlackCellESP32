@@ -13,7 +13,7 @@
 #define FILL_RECT_WIDTH 180
 #define FILL_RECT_HEIGHT 30
 
-TFT_eSPI tft = TFT_eSPI(); \\ unfortunately the pins must be set in the library file manually, and cant be set programmatically
+TFT_eSPI tft = TFT_eSPI(); // unfortunately the pins must be set in the library file manually, and cant be set programmatically
 
 void displayForce(long force) {
   tft.fillRect(X_CURSOR_START, LIVE_Y_CURSOR_START, FILL_RECT_WIDTH, FILL_RECT_HEIGHT, TFT_BLACK);
@@ -26,7 +26,7 @@ void displayMaxForce(long force) {
   tft.fillRect(X_CURSOR_START, PEAK_Y_CURSOR_START, FILL_RECT_WIDTH, FILL_RECT_HEIGHT, TFT_BLACK); // need to make this extend further right
   tft.setCursor(X_CURSOR_START, PEAK_Y_CURSOR_START);
   tft.setTextColor(TFT_GREEN, TFT_BLACK);
-  tft.printf("peak: %ld", maxForce);
+  tft.printf("peak: %ld", force);
 }
 
 void displayInit(){

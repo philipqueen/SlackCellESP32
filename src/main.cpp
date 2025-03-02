@@ -78,8 +78,10 @@ void setup() {
   VextON();
 #endif //USE_VEXT
 
+#ifdef USE_SWITCH
   // Setting up the Switch
   pinMode(SWITCH_PIN, SWITCH_MODE);
+#endif
 
   displayInit();
 
@@ -145,7 +147,7 @@ void init_sd(){
   else {
     Serial.println("File already exists");
   }
-  appedFile(SD, CSV_NAME, CSV_HEADER);
+  appendFile(SD, CSV_NAME, CSV_HEADER);
   file.close();
 
   sd_ready = true;
@@ -160,7 +162,12 @@ void loop() {
     Serial.print(abs(force), 1); //prints first sigfig of force
     Serial.print(" N"); //change depending on divider used
     Serial.println();
+#ifdef USE_SWITCH
     int Switch_state = digitalRead(SWITCH_PIN);
+#endif
+#ifndef USE_SWITCH
+    int Switch_state = LOW;
+#endif
     if ((force != prevForce) && (Switch_state == LOW)) {
           prevForce = force;
           maxForce = max(abs(force), abs(maxForce));

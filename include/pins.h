@@ -23,6 +23,7 @@ const uint8_t SD_CS_PIN = 2;
 const uint8_t LOADCELL_SCK_PIN = 26;
 const uint8_t LOADCELL_DOUT_PIN = 25;
 //Controls
+#define USE_SWITCH
 const uint8_t SWITCH_PIN = 22;
 const uint8_t SWITCH_MODE = INPUT;
 
@@ -46,6 +47,7 @@ const uint8_t SD_CS_PIN = 33;
 const uint8_t LOADCELL_SCK_PIN = 40;
 const uint8_t LOADCELL_DOUT_PIN = 41;
 //Controls
+#define USE_SWITCH
 const uint8_t SWITCH_PIN = 2;
 const uint8_t SWITCH_MODE = INPUT_PULLUP;
 
