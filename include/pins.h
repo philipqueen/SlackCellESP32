@@ -66,8 +66,8 @@ const uint8_t SD_MOSI_PIN = 26;
 const uint8_t SD_SCK_PIN =  25;
 const uint8_t SD_CS_PIN = 2;
 // HX711 circuit wiring
-const uint8_t LOADCELL_SCK_PIN = 40;
-const uint8_t LOADCELL_DOUT_PIN = 41;
+const uint8_t LOADCELL_SCK_PIN = 33;
+const uint8_t LOADCELL_DOUT_PIN = 32;
 
 #define USE_VSPI
 
