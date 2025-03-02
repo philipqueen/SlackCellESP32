@@ -33,12 +33,13 @@ const uint8_t LOADCELL_SCK_PIN = 26;
 // HX711 circuit wiring
 const uint8_t LOADCELL_DOUT_PIN = 41;
 const uint8_t LOADCELL_SCK_PIN = 40;
-#endif
 
 #elif defined(BOARD_TTGO_DISPLAY)
 // HX711 circuit wiring
 const uint8_t LOADCELL_DOUT_PIN = 32;
 const uint8_t LOADCELL_SCK_PIN = 33;
+
+#endif
 
 const long LOADCELL_OFFSET = 2900;
 
