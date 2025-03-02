@@ -51,5 +51,18 @@ const uint8_t SWITCH_MODE = INPUT_PULLUP;
 
 #define USE_VEXT
 
+#elif defined(BOARD_LILYGO)
+// SD Card circuit wiring
+#define CUSTOM_SPI_PINS
+const uint8_t SD_MISO_PIN = 27;
+const uint8_t SD_MOSI_PIN = 26;
+const uint8_t SD_SCK_PIN = 25;
+const uint8_t SD_CS_PIN = 2;
+// HX711 circuit wiring
+const int LOADCELL_SCK_PIN = 33;
+const int LOADCELL_DOUT_PIN = 32;
 #endif
+
+
+
 #endif /* !PINS_SEEN */

@@ -6,28 +6,30 @@ Based on the original SlackCell by [Markus Rampp](https://markusrampp.eu/SlackCe
 - Great for standard slackline needs (measuring your line tension for parklines or highlines)
 - Suitable for slackline science (measurement speed as fast as possible with readily available parts)
 
-First calibrate your loadcell by loading *CalibrationHeltecWifikit.ino*, and use the values displayed with your known weight to alter the calibration values in *SlackCellu8g2Switch.ino*. Then load and run the latter file with your updated values, and you have a dyno!
+First calibrate your loadcell by loading *Calibration.ino*, and use the values displayed with your known weight to alter the calibration values in *SlackCell.ino*. Then load and run the latter file with your updated values, and you have a dyno!
 
 ## Code Notes:
 Current features are displaying current and max force on integrated OLED, and writing forces to microSD.
 
 Current sampling rate:
-- 83 Hz at resting tension/with display off (HX711 is limited to 80Hz)
-- 30 Hz displaying changing force
+- Need to retest sampling rates for new hardware
+- ~~83 Hz at resting tension/with display off (HX711 is limited to 80Hz)~~
+- ~~30 Hz displaying changing force~~
 
 Recent improvements:
-- Switched to the u8g2 library to allow for a hardware I2C connection (was previously software connection)
+- Switched to new TTGO T-Display hardware (from HiLetGO) 
+- Switched from U8g2 to TFT_eSPI for new colored display - still need to test sampling rates
 - Increased display bus clock speed to 1MHz, leading to significant increase in sampling rate
-- Added toggle switch to turn off display, allowing 80Hz recording to SD card
+- ~~Added toggle switch to turn off display, allowing 80Hz recording to SD card~~ Need to reimplement with integrated buttons on TTGO T-Display
 - Change only force or max force, never both at the same time, to decrease display slowdowns
 
 Future improvements:
 - Add BLE (Bluetooth Low Energy)/WiFi connectivity to allow app development
 - Run display logic on separate core from force reading and SD writing (ESP32 is dual core)
 - Set force change threshold for the display changes (0.1kN)
+- Get a production quality PCB made for the project
 
-Developed for the Heltec Wifi Kit 32 v2/v3.
-Using other ESP32 microcontrollers may require changing the wiring and the U8G2 setup code.
+Developed to work with different boards. Supported right now are: Heltec Wifi Kit 32 v2/v3 or TTGO T-Display microcontroller. Using other ESP32 microcontrollers may require changing the wiring and adding a new display driver.
 
 ## How to use the code
 - install VSCode
@@ -47,7 +49,7 @@ Before use, a calibration sketch must be uploaded to the microcontroller and the
 
 The price of the PCBs are still being worked out as they are developed, but they will likely be quite cheap compared to the other costs. The price of all other components is subject to change, but I've included a rough pricing estimate for project planning.
 
-- Heltec Wifi Kit 32 v2 or v3: ~$20
+- Heltec Wifi Kit 32 v2/v3 or HiLetgo ESP32 LCD WiFi Kit: ~$20
 - S Beam Load Cell: ~$40
 - HX711 Loadcell Amplifier: ~$7 (3 pack)
 - MicroSD Card Reader: ~$7 (5 pack)
@@ -60,17 +62,17 @@ Because two of the parts come in bulk, a group of three friends could each build
 ### Parts list:
 Links to parts list are NOT affiliate links. Sourcing of the PCB will be added once PCB development reaches a more stable place.
 
-1. Microcontroller: [Buy Heltec Wifi Kit 32 v2 on Amazon](https://www.amazon.com/MakerFocus-Development-0-96inch-Display-Compatible/dp/B076KJZ5QM/)
+1. Microcontroller: [Buy HiLetgo ESP32 LCD WiFi Kit on Amazon](https://www.amazon.com/dp/B07X1W16QS/)
 
-Heltec has released a v3 of this board, but has changed the pinout, which will cause the existing code and circuit layout to fail. We will update these designs to V3 eventually, but are waiting to ensure support for the new board is good enough.
+This is a specific version of the TTGO T-Display. Other versions of the same board should work, but haven't been tested.
 
 2. Load Cell: [Buy Load Cell on Amazon](https://www.amazon.com/Portable-High-Precision-Pressure-Tension-Weighing/dp/B077YHFCX4/)
 
 For slackline purposes, an S Beam load cell rated to 2000 kg is recommended. Always back up the load cell with a stronger component, and do not exceed its rated force. Amazon sourcing of these is sporadic, please file an issue if the link above is incorrect.
 
-3. HX711 Loadcell Amplifier: [Buy HiLetGo HX711 on Amazon](https://www.amazon.com/HiLetgo-Weighing-Dual-Channel-Precision-Pressure/dp/B00XRRNCOO)
+3. HX711 Loadcell Amplifier: [Buy Comimark HX711 on Amazon]([https://www.amazon.com/AiTrip-Weighing-Conversion-Sensors-Microcontroller/dp/B07SGPX7ZH](https://www.amazon.com/dp/B07X2JZRKB))
 
-This comes in a pack of 3. Buying from HiLetGo ensures the amplifier fits properly into the PCB, other HX711s may not fit in the PCB.
+This comes in a pack of 4. Buying this version ensures the amplifier fits properly into the PCB, other HX711s may not fit in the PCB.
 
 4. MicroSD Card Reader: [Buy HiLetGo MicroSD card reader on Amazon](https://www.amazon.com/HiLetgo-Adater-Interface-Conversion-Arduino/dp/B07BJ2P6X6/)
 
