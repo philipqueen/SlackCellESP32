@@ -5,3 +5,5 @@
 .vscode/ipch
 .DS_Store
 .vscode/extensions.json
+experiments/PrintNumbers/PrintNumbers.ino
+.DS_Store

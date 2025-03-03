@@ -53,11 +53,9 @@ const uint8_t SWITCH_MODE = INPUT_PULLUP;
 
 #define USE_VEXT
 
+
 #elif defined(BOARD_TTGO_DISPLAY)
-// internal OLED wiring
-const uint8_t OLED_CLOCK_PIN = 18;
-const uint8_t OLED_RESET_PIN = 21;
-const uint8_t OLED_DATA_PIN = 17;
+
 #define SCREEN_ROTATION 1
 // SD Card circuit wiring
 #define CUSTOM_SPI_PINS
@@ -72,4 +70,3 @@ const uint8_t LOADCELL_DOUT_PIN = 32;
 #define USE_VSPI
 
 #endif
-#endif /* !PINS_SEEN */

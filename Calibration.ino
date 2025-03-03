@@ -48,6 +48,7 @@ const float LOADCELL_DIVIDER_N = 223.46;
 const float LOADCELL_DIVIDER_kg = LOADCELL_DIVIDER_N * 9.81;
 const float LOADCELL_DIVIDER_lb = LOADCELL_DIVIDER_N * 4.448;
 
+
 // Hang yourself on the scale and weight you with and everything 
 // you need for hanging you there on a trustworthy scale
 const double calibrationWeight = 72.575;
@@ -80,7 +81,6 @@ void loop() {
     //withDivider should equal calibration weight
     Serial.println("     Raw  withOffset  withDivider  recommendedDivider");
     char string [60];
-    // doubles with sprintf didn't work :(
     sprintf(string,"%8ld  %10ld  %11ld", value, value - LOADCELL_OFFSET, withDivider);
     Serial.print(string);
     Serial.print("         ");    
