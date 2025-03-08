@@ -41,6 +41,13 @@ void VextOFF(void);
 SPIClass spiVspi(VSPI);
 #endif
 
+#ifdef USE_BUTTON
+#include "OneButton.h"
+OneButton display_active_btn(BUTTON_PIN, true);
+void toggleSwitchState();
+void resetMaxForce();
+#endif
+
 const long baud = 115200;
 
 const long LOADCELL_OFFSET = 2330;
@@ -68,7 +75,6 @@ unsigned long timeNow = 0;
 
 bool Switch_state = false;
 
-
 void setup() {
   Serial.begin(baud);
   Serial.println("Welcome to SlackCell!");
@@ -86,7 +92,8 @@ void setup() {
 #endif
 #ifdef USE_BUTTON
   // Setting up the Button
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  display_active_btn.attachClick(toggleSwitchState);
+  display_active_btn.attachLongPressStart(resetMaxForce);
 #endif
 
   displayInit();
@@ -171,9 +178,7 @@ void loop() {
 #ifdef USE_SWITCH
     Switch_state = (digitalRead(SWITCH_PIN) == HIGH);
 #elif defined(USE_BUTTON)
-    if (digitalRead(BUTTON_PIN) == LOW) {
-      Switch_state = !Switch_state;
-    } // TODO: debounce this without taking up too much time in the loop
+    display_active_btn.tick();
 #endif
     Serial.print("Switch: ");
     Serial.println(Switch_state);
@@ -241,13 +246,22 @@ void appendFile(fs::FS &fs, const char * path, const char * message) {
   file.close();
 }
 
+#ifdef USE_BUTTON
+void toggleSwitchState(){
+  Switch_state = !Switch_state;
+}
+
+void resetMaxForce(){
+  maxForce = 0;
+}
+#endif
+
 #ifdef USE_VEXT
 //Turn external power supply on
 void VextON(void)
 {
   pinMode(Vext,OUTPUT);
   digitalWrite(Vext, LOW);
-  
 }
 
 //Turn external power supply off
