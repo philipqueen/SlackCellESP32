@@ -30,6 +30,7 @@ const uint8_t SWITCH_MODE = INPUT;
 
 //The Heltec Wifi Kit V2 has this feature, but it is not wired to use it on the custom pcb
 //#define USE_VEXT
+#define READING_AVG_TIMES 7
 
 #elif defined(BOARD_HELTEC_V3)
 // internal OLED wiring
@@ -52,6 +53,7 @@ const uint8_t LOADCELL_DOUT_PIN = 41;
 const uint8_t BUTTON_PIN = 2;
 
 #define USE_VEXT
+#define READING_AVG_TIMES 7
 
 
 #elif defined(BOARD_TTGO_DISPLAY)
@@ -70,5 +72,6 @@ const uint8_t LOADCELL_DOUT_PIN = 32;
 const uint8_t BUTTON_PIN = 0;
 
 #define USE_VSPI
+#define READING_AVG_TIMES 1
 
 #endif

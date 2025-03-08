@@ -64,7 +64,9 @@ unsigned long timestamp = 0;
 long maxForce = 0;
 long force = -1;
 long reading = -1;
+long avg_reading = 0;
 long prevForce = -100;
+long prevMaxForce = -100;
 
 // TODO: should be selectable with buttons, maybe a small menu?
 bool recording = true;
@@ -111,7 +113,7 @@ void setup() {
     force = 0;
   }
 
-  queue = xQueueCreate(5, sizeof(long));
+  queue = xQueueCreate(2, sizeof(long));
 
   if(queue == NULL){
     Serial.println("Error creating the queue");
@@ -185,35 +187,54 @@ void init_sd(){
 }
 
 void loop() {
-#ifdef USE_SWITCH
-    Switch_state = (digitalRead(SWITCH_PIN) == HIGH);
-#elif defined(USE_BUTTON)
-    display_active_btn.tick();
-#endif
+  #ifdef USE_SWITCH
+      Switch_state = (digitalRead(SWITCH_PIN) == HIGH);
+  #elif defined(USE_BUTTON)
+      display_active_btn.tick();
+  #endif
 
   if (loadcell.is_ready()) {
-    reading = loadcell.get_units(1);
+    reading = std::lround(loadcell.get_units(1));
     timeNow = millis(); //milliseconds since startup
+    maxForce = max(reading, maxForce);
+
     if(Switch_state == false){
-      xQueueSend(queue, &reading, portMAX_DELAY); //TODO: turn off waiting, instead drop values, sd is more import than displaying
+#if READING_AVG_TIMES == 1
+      xQueueSend(queue, &reading, 0);
+#else
+      //The display of the Heltec V3 for example is so slow, that it drops 80% of the values of the display queue, so we might as well average them.
+      avg_reading += reading;
+      //This modulo construct calls the first branch every READING_AVG_TIMES-th time and sends the force to the display.
+      if(readingID % READING_AVG_TIMES == 0){
+        //the first avg_reading after boot will be wrong, but it will only be seen for a few ms once, and will never be written to sd. So we just don't care.
+        avg_reading = std::lround(avg_reading / float(READING_AVG_TIMES));
+        //If the queue is full, the reading just get's discarded for the display, so the mcu can continue writing to the sd.
+        //Keeping the sampling rate for sd is more import than displaying
+        xQueueSend(queue, &avg_reading, 0);
+        avg_reading = 0;
+      }
+#endif
+
     }
     Serial.printf("Reading: %ld N\n", abs(reading));
     if(sd_ready && recording){
-      writeSD(readingID++, timeNow, reading);
+      writeSD(readingID, timeNow, reading);
     }
+    //increasing readingID outside of if, because it is also used when recording is off
+    readingID++;
   }
 }
 
 void Display(void * parameter) {
   for(;;){
-    Serial.print("checking queue\n");
     xQueueReceive(queue, &force, portMAX_DELAY);
     Serial.println(force);
-    if ((force != prevForce)) {
+    if (force != prevForce) {
       prevForce = force;
-      maxForce = max(force, maxForce); //Todo if the queue drops values, we could miss peaks, this has to be done directly after measuring
-
       displayForce(force);
+    }
+    if(maxForce != prevMaxForce) {
+      prevMaxForce = maxForce;
       displayMaxForce(maxForce);
     }
   }
@@ -249,7 +270,7 @@ void writeFile(fs::FS &fs, const char * path, const char * message) {
 
 // Append data to the SD card (DON'T MODIFY THIS FUNCTION)
 void appendFile(fs::FS &fs, const char * path, const char * message) {
-  Serial.printf("Appending to file: %s\n", path);
+  //Serial.printf("Appending to file: %s\n", path);
 
   File file = fs.open(path, FILE_APPEND);
   if(!file) {
@@ -257,7 +278,7 @@ void appendFile(fs::FS &fs, const char * path, const char * message) {
     return;
   }
   if(file.print(message)) {
-    Serial.println("Message appended");
+    //Serial.println("Message appended");
   } else {
     Serial.println("Append failed");
   }
