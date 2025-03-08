@@ -9,6 +9,7 @@ USE_VEXT: if defined, enables usage of switchable external voltage. Only enable 
 //Wrapper to include this file only once
 #ifndef PINS_SEEN
 #define PINS_SEEN
+#endif
 
 #if defined(BOARD_HELTEC_V2)
 // internal OLED wiring
