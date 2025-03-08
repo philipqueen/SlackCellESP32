@@ -67,6 +67,8 @@ const uint8_t SD_CS_PIN = 2;
 // HX711 circuit wiring
 const uint8_t LOADCELL_SCK_PIN = 33;
 const uint8_t LOADCELL_DOUT_PIN = 32;
+#define USE_BUTTON
+const uint8_t BUTTON_PIN = 0;
 
 #define USE_VSPI
 

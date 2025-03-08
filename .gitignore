@@ -7,3 +7,4 @@
 .vscode/extensions.json
 experiments/PrintNumbers/PrintNumbers.ino
 .DS_Store
+.vscode/settings.json

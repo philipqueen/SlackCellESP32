@@ -66,6 +66,8 @@ int readingID = 0;
 
 unsigned long timeNow = 0;
 
+bool Switch_state = false;
+
 
 void setup() {
   Serial.begin(baud);
@@ -81,6 +83,10 @@ void setup() {
 #ifdef USE_SWITCH
   // Setting up the Switch
   pinMode(SWITCH_PIN, SWITCH_MODE);
+#endif
+#ifdef USE_BUTTON
+  // Setting up the Button
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
 #endif
 
   displayInit();
@@ -138,7 +144,7 @@ void init_sd(){
   }
 
   // If the data.txt file doesn't exist
-  // Create a file on the SD card and write the data labels
+  // Create a file on the SD card
   File file = SD.open("/data.txt");
   if(!file) {
     Serial.println("File doens't exist");
@@ -147,7 +153,7 @@ void init_sd(){
   else {
     Serial.println("File already exists");
   }
-  appendFile(SD, CSV_NAME, CSV_HEADER);
+  appendFile(SD, CSV_NAME, CSV_HEADER); // We always append the header to demarcate different sessions
   file.close();
 
   sd_ready = true;
@@ -163,12 +169,15 @@ void loop() {
     Serial.print(" N"); //change depending on divider used
     Serial.println();
 #ifdef USE_SWITCH
-    int Switch_state = digitalRead(SWITCH_PIN);
+    Switch_state = (digitalRead(SWITCH_PIN) == HIGH);
+#elif defined(USE_BUTTON)
+    if (digitalRead(BUTTON_PIN) == LOW) {
+      Switch_state = !Switch_state;
+    } // TODO: debounce this without taking up too much time in the loop
 #endif
-#ifndef USE_SWITCH
-    int Switch_state = LOW;
-#endif
-    if ((force != prevForce) && (Switch_state == LOW)) {
+    Serial.print("Switch: ");
+    Serial.println(Switch_state);
+    if ((force != prevForce) && (Switch_state == false)) { // TODO:
           prevForce = force;
           maxForce = max(abs(force), abs(maxForce));
           // display updates only value at a time to increase speed, privileges maxForce
