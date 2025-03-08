@@ -18,6 +18,14 @@ Tested with and recommended for Heltec WifiKit32 V2 or V3 controller
 #include "pins.h"
 #include "display.h"
 
+#define CSV_NAME "/slackcell.txt" // TODO: not sure if these should live in another file
+#define CSV_HEADER "Reading ID, Time (ms), Force (N) \r\n"
+#define SD_MESSAGE_LENGTH 60
+#define SD_START_DELAY 2000
+
+#define TARE_AVERAGE_TIME 30
+#define MAX_TARE_VALUE 30
+
 //Function prototypes (needed for Platform IO and every other normal c++ file, its just the Arduino IDE uses magic to get rid of them)
 void init_sd();
 void writeSD(int readingID, long timeNow, long force);
@@ -27,6 +35,10 @@ void appendFile(fs::FS &fs, const char * path, const char * message);
 #ifdef USE_VEXT
 void VextON(void);
 void VextOFF(void);
+#endif
+
+#ifdef USE_VSPI
+SPIClass spiVspi(VSPI);
 #endif
 
 const long baud = 115200;
@@ -54,6 +66,8 @@ int readingID = 0;
 
 unsigned long timeNow = 0;
 
+bool Switch_state = false;
+
 
 void setup() {
   Serial.begin(baud);
@@ -66,25 +80,36 @@ void setup() {
   VextON();
 #endif //USE_VEXT
 
+#ifdef USE_SWITCH
   // Setting up the Switch
   pinMode(SWITCH_PIN, SWITCH_MODE);
+#endif
+#ifdef USE_BUTTON
+  // Setting up the Button
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+#endif
 
   displayInit();
 
   loadcell.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
   loadcell.set_offset(LOADCELL_OFFSET);
   loadcell.set_scale(LOADCELL_DIVIDER_N);
-  force = loadcell.get_units(30);
-  if (force < 30) {
+  force = loadcell.get_units(TARE_AVERAGE_TIME);
+  if (force < MAX_TARE_VALUE) {
     loadcell.tare();
     force = 0;
   }
 
+  // TODO: initialiaze queues
+
+  // TODO: initialize tasks
+
   init_sd();
 
   //This might seem like a unnecessary start up delay, just to see "Slack Cell" longer...
-  //but it also stabilizes the signal levels to not have multiple kilos of maxForce just from booting up.
-  delay(2000);
+  //but it also stabilizes the signal levels to not have multiple kilos of maxForce just from booting up...
+  //and gives the SD card time to initialize
+  delay(SD_START_DELAY);
   displayClearBuffer();
 }
 
@@ -96,8 +121,10 @@ void init_sd(){
     //already initialized, skipping
     return;
 
+  sdMessage.reserve(SD_MESSAGE_LENGTH);
+
   #ifdef CUSTOM_SPI_PINS
-  SPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
+  SPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN); // TODO: abstract this to account for VSPI use
   #endif
 
   // Initialize SD card
@@ -117,16 +144,16 @@ void init_sd(){
   }
 
   // If the data.txt file doesn't exist
-  // Create a file on the SD card and write the data labels
+  // Create a file on the SD card
   File file = SD.open("/data.txt");
   if(!file) {
     Serial.println("File doens't exist");
     Serial.println("Creating file...");
-    writeFile(SD, "/data.txt", "Reading ID, Time (ms), Force (N) \r\n"); //move out of if statement so it separates logging sessions?
   }
   else {
     Serial.println("File already exists");
   }
+  appendFile(SD, CSV_NAME, CSV_HEADER); // We always append the header to demarcate different sessions
   file.close();
 
   sd_ready = true;
@@ -141,8 +168,16 @@ void loop() {
     Serial.print(abs(force), 1); //prints first sigfig of force
     Serial.print(" N"); //change depending on divider used
     Serial.println();
-    int Switch_state = digitalRead(SWITCH_PIN);
-    if ((force != prevForce) && (Switch_state == LOW)) {
+#ifdef USE_SWITCH
+    Switch_state = (digitalRead(SWITCH_PIN) == HIGH);
+#elif defined(USE_BUTTON)
+    if (digitalRead(BUTTON_PIN) == LOW) {
+      Switch_state = !Switch_state;
+    } // TODO: debounce this without taking up too much time in the loop
+#endif
+    Serial.print("Switch: ");
+    Serial.println(Switch_state);
+    if ((force != prevForce) && (Switch_state == false)) { // TODO:
           prevForce = force;
           maxForce = max(abs(force), abs(maxForce));
           // display updates only value at a time to increase speed, privileges maxForce
@@ -162,8 +197,14 @@ void loop() {
 }
 
 void writeSD(int readingID, long timeNow, long force) {
-  sdMessage = String(readingID) + "," + String(timeNow) + "," + String(force) + "\r\n";
-  appendFile(SD, "/data.txt", sdMessage.c_str());
+  sdMessage = "";
+  sdMessage += readingID;
+  sdMessage += ",";
+  sdMessage += timeNow;
+  sdMessage += ",";
+  sdMessage += force;
+  sdMessage += "\n";
+  appendFile(SD, CSV_NAME, sdMessage.c_str());
 }
 
 // Write to the SD card (DON'T MODIFY THIS FUNCTION)

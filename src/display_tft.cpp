@@ -1,12 +1,11 @@
-//only use this display implementation for Heltec boards
-#ifdef BOARD_LILYGO
+//only use this display implementation for TFT compatible boards
+#if defined(BOARD_TTGO_DISPLAY)
 
 #include <Arduino.h>
-#include <TFT_eSPI.h>
-#include <SPI.h>
 
 #include "display.h"
 #include "pins.h"
+#include <TFT_eSPI.h> 
 
 #define X_CURSOR_START 10
 #define LIVE_Y_CURSOR_START 20
@@ -14,12 +13,11 @@
 #define FILL_RECT_WIDTH 180
 #define FILL_RECT_HEIGHT 30
 
-TFT_eSPI tft = TFT_eSPI();
-SPIClass spiVspi(VSPI);
+TFT_eSPI tft = TFT_eSPI(); // unfortunately the pins must be set in the library file manually, and cant be set programmatically
 
 void displayForce(long force) {
   tft.fillRect(X_CURSOR_START, LIVE_Y_CURSOR_START, FILL_RECT_WIDTH, FILL_RECT_HEIGHT, TFT_BLACK);
-  tft.setCursor(X_CURSOR_START, LIVE_Y_CURSOR_START); // x, y position
+  tft.setCursor(X_CURSOR_START, LIVE_Y_CURSOR_START);
   tft.setTextColor(TFT_BLUE, TFT_BLACK);
   tft.printf("live: %ld", force);
 }
@@ -45,7 +43,7 @@ void displayInit(){
 }
 
 void displayClearBuffer(){
-
+//   no buffer to clear for TFT displays
 }
 
 #endif //Board filter

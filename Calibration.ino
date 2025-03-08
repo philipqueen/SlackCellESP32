@@ -16,14 +16,38 @@
 #include <stdio.h>
 #include "HX711.h"
 
+//      D2  ||  SCK   HX711
+//      D4  ||  DOUT  HX711
+
+//Change to the board you want to use, and check the wiring defined below
+//#define BOARD_HELTEC_V2
+// #define BOARD_HELTEC_V3
+#define BOARD_TTGO_DISPLAY
+
+#if defined(BOARD_HELTEC_V2)
 // HX711 circuit wiring
-const int LOADCELL_DOUT_PIN = 32;
-const int LOADCELL_SCK_PIN = 33;
+const uint8_t LOADCELL_DOUT_PIN = 25;
+const uint8_t LOADCELL_SCK_PIN = 26;
+
+#elif defined(BOARD_HELTEC_V3)
+// HX711 circuit wiring
+const uint8_t LOADCELL_DOUT_PIN = 41;
+const uint8_t LOADCELL_SCK_PIN = 40;
+
+#elif defined(BOARD_TTGO_DISPLAY)
+// HX711 circuit wiring
+const uint8_t LOADCELL_DOUT_PIN = 32;
+const uint8_t LOADCELL_SCK_PIN = 33;
+
+#endif
+
 const long LOADCELL_OFFSET = 2900;
-// divider to get the force in the right units. Uses logical units [N]
-const long LOADCELL_DIVIDER_N = -217;
-const long LOADCELL_DIVIDER_kg = LOADCELL_DIVIDER_N * 9.81;
-const long LOADCELL_DIVIDER_lb = LOADCELL_DIVIDER_N * 4.448;
+
+// divider to get the force in the right units. I'm using logical units [N]
+const float LOADCELL_DIVIDER_N = 223.46;
+const float LOADCELL_DIVIDER_kg = LOADCELL_DIVIDER_N * 9.81;
+const float LOADCELL_DIVIDER_lb = LOADCELL_DIVIDER_N * 4.448;
+
 
 // Hang yourself on the scale and weight you with and everything 
 // you need for hanging you there on a trustworthy scale
@@ -37,7 +61,7 @@ long prevForce = 0;
 HX711 loadcell;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.println("Welcome to SlackCell Calibrating!");
   Serial.print("Sketch:   ");   Serial.println(__FILE__);
   Serial.print("Uploaded: ");   Serial.println(__DATE__);

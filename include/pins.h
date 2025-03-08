@@ -9,6 +9,7 @@ USE_VEXT: if defined, enables usage of switchable external voltage. Only enable 
 //Wrapper to include this file only once
 #ifndef PINS_SEEN
 #define PINS_SEEN
+#endif
 
 #if defined(BOARD_HELTEC_V2)
 // internal OLED wiring
@@ -23,6 +24,7 @@ const uint8_t SD_CS_PIN = 2;
 const uint8_t LOADCELL_SCK_PIN = 26;
 const uint8_t LOADCELL_DOUT_PIN = 25;
 //Controls
+#define USE_SWITCH
 const uint8_t SWITCH_PIN = 22;
 const uint8_t SWITCH_MODE = INPUT;
 
@@ -46,23 +48,28 @@ const uint8_t SD_CS_PIN = 33;
 const uint8_t LOADCELL_SCK_PIN = 40;
 const uint8_t LOADCELL_DOUT_PIN = 41;
 //Controls
+#define USE_SWITCH
 const uint8_t SWITCH_PIN = 2;
 const uint8_t SWITCH_MODE = INPUT_PULLUP;
 
 #define USE_VEXT
 
-#elif defined(BOARD_LILYGO)
+
+#elif defined(BOARD_TTGO_DISPLAY)
+
+#define SCREEN_ROTATION 1
 // SD Card circuit wiring
 #define CUSTOM_SPI_PINS
 const uint8_t SD_MISO_PIN = 27;
 const uint8_t SD_MOSI_PIN = 26;
-const uint8_t SD_SCK_PIN = 25;
+const uint8_t SD_SCK_PIN =  25;
 const uint8_t SD_CS_PIN = 2;
 // HX711 circuit wiring
-const int LOADCELL_SCK_PIN = 33;
-const int LOADCELL_DOUT_PIN = 32;
+const uint8_t LOADCELL_SCK_PIN = 33;
+const uint8_t LOADCELL_DOUT_PIN = 32;
+#define USE_BUTTON
+const uint8_t BUTTON_PIN = 0;
+
+#define USE_VSPI
+
 #endif
-
-
-
-#endif /* !PINS_SEEN */
