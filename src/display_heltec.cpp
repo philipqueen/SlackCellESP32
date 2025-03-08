@@ -9,9 +9,10 @@
 
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C   u8g2(U8G2_R2, OLED_RESET_PIN, OLED_CLOCK_PIN, OLED_DATA_PIN); //setup display connection
 
-void display_six_digits(long number, uint8_t line){
-  // Maximum number of letters the screen can display in one row
-  uint8_t maxLength = 6;
+//number: number to display
+//line: y position on screen to start drawing on
+//maxLength: Maximum number of letters the screen can display in one row
+void displayNdigits(long number,  uint8_t line, uint8_t maxLength){
   // Long range is +-2,147,483,648
   char bufferF[12] = {};
   ltoa(number, bufferF, 10);
@@ -25,11 +26,11 @@ void display_six_digits(long number, uint8_t line){
 }
 
 void displayForce(long force) {
-  display_six_digits(force, 0);
+  displayNdigits(force, 0, 6);
 }
 
 void displayMaxForce(long force) {
-  display_six_digits(force, 36);
+  displayNdigits(force, 36, 6);
 }
 
 void displayInit(){
