@@ -31,6 +31,7 @@ void init_sd();
 void writeSD(int readingID, long timeNow, long force);
 void writeFile(fs::FS &fs, const char * path, const char * message);
 void appendFile(fs::FS &fs, const char * path, const char * message);
+void Display(void * parameter);
 
 #ifdef USE_VEXT
 void VextON(void);
@@ -56,10 +57,13 @@ const float LOADCELL_DIVIDER_kg = LOADCELL_DIVIDER_N * 9.81;
 const float LOADCELL_DIVIDER_lb = LOADCELL_DIVIDER_N * 4.448;
 
 HX711 loadcell; //setup HX711 object
+TaskHandle_t DisplayTask;
+QueueHandle_t queue;
 
 unsigned long timestamp = 0;
 long maxForce = 0;
 long force = -1;
+long reading = -1;
 long prevForce = -100;
 
 // TODO: should be selectable with buttons, maybe a small menu?
@@ -107,16 +111,29 @@ void setup() {
     force = 0;
   }
 
-  // TODO: initialiaze queues
+  queue = xQueueCreate(5, sizeof(long));
 
-  // TODO: initialize tasks
+  if(queue == NULL){
+    Serial.println("Error creating the queue");
+  }
 
-  init_sd();
+  xTaskCreatePinnedToCore(
+    Display, /* Function to implement the task */
+    "DisplayTask", /* Name of the task */
+    10000,  /* Stack size in words */
+    NULL,  /* Task input parameter */
+    0,  /* Priority of the task */
+    &DisplayTask,  /* Task handle. */
+    0); /* Core where the task should run */
+
+  sdMessage.reserve(SD_MESSAGE_LENGTH);
 
   //This might seem like a unnecessary start up delay, just to see "Slack Cell" longer...
   //but it also stabilizes the signal levels to not have multiple kilos of maxForce just from booting up...
   //and gives the SD card time to initialize
   delay(SD_START_DELAY);
+  init_sd();
+
   displayClearBuffer();
 }
 
@@ -168,37 +185,38 @@ void init_sd(){
 }
 
 void loop() {
-  if (loadcell.is_ready()) {
-    Serial.print("Reading: ");
-    force = loadcell.get_units(1);
-    timeNow = millis(); //milliseconds since startup
-    Serial.print(abs(force), 1); //prints first sigfig of force
-    Serial.print(" N"); //change depending on divider used
-    Serial.println();
 #ifdef USE_SWITCH
     Switch_state = (digitalRead(SWITCH_PIN) == HIGH);
 #elif defined(USE_BUTTON)
     display_active_btn.tick();
 #endif
-    Serial.print("Switch: ");
-    Serial.println(Switch_state);
-    if ((force != prevForce) && (Switch_state == false)) { // TODO:
-          prevForce = force;
-          maxForce = max(abs(force), abs(maxForce));
-          // display updates only value at a time to increase speed, privileges maxForce
-        if (maxForce == abs(force)) {
-            displayMaxForce(maxForce);
-          }
-        else {
-          displayForce(force);
-        }
-  }
 
+  if (loadcell.is_ready()) {
+    reading = loadcell.get_units(1);
+    timeNow = millis(); //milliseconds since startup
+    if(Switch_state == false){
+      xQueueSend(queue, &reading, portMAX_DELAY); //TODO: turn off waiting, instead drop values, sd is more import than displaying
+    }
+    Serial.printf("Reading: %ld N\n", abs(reading));
     if(sd_ready && recording){
-      writeSD(readingID++, timeNow, force);
+      writeSD(readingID++, timeNow, reading);
     }
   }
+}
 
+void Display(void * parameter) {
+  for(;;){
+    Serial.print("checking queue\n");
+    xQueueReceive(queue, &force, portMAX_DELAY);
+    Serial.println(force);
+    if ((force != prevForce)) {
+      prevForce = force;
+      maxForce = max(force, maxForce); //Todo if the queue drops values, we could miss peaks, this has to be done directly after measuring
+
+      displayForce(force);
+      displayMaxForce(maxForce);
+    }
+  }
 }
 
 void writeSD(int readingID, long timeNow, long force) {
