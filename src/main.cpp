@@ -196,7 +196,6 @@ void loop() {
   if (loadcell.is_ready()) {
     reading = std::lround(loadcell.get_units(1));
     timeNow = millis(); //milliseconds since startup
-    maxForce = max(reading, maxForce);
 
     if(Switch_state == false){
 #if READING_AVG_TIMES == 1
@@ -229,14 +228,18 @@ void Display(void * parameter) {
   for(;;){
     xQueueReceive(queue, &force, portMAX_DELAY);
     Serial.println(force);
-    if (force != prevForce) {
+
+    if ((force != prevForce)) {
       prevForce = force;
-      displayForce(force);
+      maxForce = max(force, maxForce);
     }
-    if(maxForce != prevMaxForce) {
-      prevMaxForce = maxForce;
-      displayMaxForce(maxForce);
-    }
+      if(maxForce != prevMaxForce) {
+        prevMaxForce = maxForce;
+        displayMaxForce(maxForce);
+      }
+      else {
+        displayForce(force);
+      }
   }
 }
 
