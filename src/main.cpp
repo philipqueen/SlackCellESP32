@@ -150,7 +150,7 @@ void init_sd(){
   sdMessage.reserve(SD_MESSAGE_LENGTH);
 
   #ifdef CUSTOM_SPI_PINS
-  SPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN); // TODO: abstract this to account for VSPI use
+  SPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
   #endif
 
   // Initialize SD card

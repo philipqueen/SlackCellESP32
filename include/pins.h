@@ -4,6 +4,14 @@ This file contains the pin definitions for the different supported boards.
 BOARD_xxxx: This define is set by the PLATFORM IO build system, look in platformio.ini under build-flags of your board.
 USE_VEXT: if defined, enables usage of switchable external voltage. Only enable if support on your specific board
     Using this supply for connected devices, like HX711 and SD card will reduce power consumption in deep sleep
+USE_BUTTON: if defined, enables usage of a button to toggle the switch state
+USE_SWITCH: if defined, enables usage of a switch to toggle the switch state
+USE_VSPI: if defined, enables usage of the VSPI bus for the SD card. This is required for some boards with SPI
+    screen interfaces to prevent SPI conflicts with the SD card
+CUSTOM_SPI_PINS: if defined, enables usage of custom SPI pins for the screen. This is required for boards that do not 
+    use the default SPI pins for the screen connection
+READING_AVG_TIMES: number of readings to average for the HX711. 
+    For boards where the display cannot keep up with readings, average values to send to the display.
 */
 
 //Wrapper to include this file only once
