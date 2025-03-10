@@ -1,4 +1,5 @@
 from pathlib import Path
+import argparse
 from typing import Optional
 import pandas as pd
 
@@ -28,8 +29,11 @@ def csv_to_dataframes(csv_path: Path) -> dict[str, pd.DataFrame]:
     return dataframes
 
 if __name__ == "__main__":
-    csv_path = Path("/PATH/slackcell.txt")
-    dataframes = csv_to_dataframes(csv_path)
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("csv_path", type=Path)
+    args = arg_parser.parse_args()
+
+    dataframes = csv_to_dataframes(args.csv_path)
     for name, df in dataframes.items():
         df.columns = df.columns.str.strip()
         for key in df.columns:

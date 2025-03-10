@@ -29,8 +29,15 @@ Future improvements:
 - Set force change threshold for the display changes (0.1kN)
 - Get a production quality PCB made for the project
 
-Developed for the TTGO T-Display microcontroller, sold under a few brands including HiLetGo. 
-Using other ESP32 microcontrollers may require changing the wiring and the display code.
+Developed to work with different boards. Supported right now are: Heltec Wifi Kit 32 v2/v3 or TTGO T-Display microcontroller. Using other ESP32 microcontrollers may require changing the wiring and adding a new display driver.
+
+## How to use the code
+- install VSCode
+- install Platform IO plugin in VSCode
+- open this repo in VSCode
+- open the Platform IO plugin tab
+- find the "Project Tasks"
+    hit "Upload and Monitor" in the submenu of the board you are using.
 
 ## How to make a SlackCell ESP32:
 
@@ -42,7 +49,7 @@ Before use, a calibration sketch must be uploaded to the microcontroller and the
 
 The price of the PCBs are still being worked out as they are developed, but they will likely be quite cheap compared to the other costs. The price of all other components is subject to change, but I've included a rough pricing estimate for project planning.
 
-- HiLetgo ESP32 LCD WiFi Kit: ~$20
+- Heltec Wifi Kit 32 v2/v3 or HiLetgo ESP32 LCD WiFi Kit: ~$20
 - S Beam Load Cell: ~$40
 - HX711 Loadcell Amplifier: ~$7 (3 pack)
 - MicroSD Card Reader: ~$7 (5 pack)
