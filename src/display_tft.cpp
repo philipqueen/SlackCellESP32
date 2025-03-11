@@ -14,6 +14,9 @@
 #define FILL_RECT_WIDTH 60
 #define FILL_RECT_HEIGHT 30
 
+#define SD_X_CURSOR_START 200
+#define SD_Y_CURSOR_START 100
+
 TFT_eSPI tft = TFT_eSPI(); // unfortunately the pins must be set in the library file manually, and cant be set programmatically
 
 void displayForce(long force) {
@@ -54,6 +57,19 @@ void displayClearBuffer(){
   tft.setCursor(X_CURSOR_START, PEAK_Y_CURSOR_START);
   tft.setTextColor(TFT_GREEN, TFT_BLACK);
   tft.print("peak:");
+}
+
+void displaySDWorking(bool working){
+  tft.fillRect(SD_X_CURSOR_START, SD_Y_CURSOR_START, FILL_RECT_WIDTH, FILL_RECT_HEIGHT, TFT_BLACK);
+  if (working){
+    tft.setCursor(SD_X_CURSOR_START, SD_Y_CURSOR_START);
+    tft.setTextColor(TFT_GREEN, TFT_BLACK);
+    tft.print("SD");
+  } else {
+    tft.setCursor(SD_X_CURSOR_START, SD_Y_CURSOR_START);
+    tft.setTextColor(TFT_RED, TFT_BLACK);
+    tft.print("SD");
+  }
 }
 
 #endif //Board filter

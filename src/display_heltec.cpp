@@ -51,4 +51,8 @@ void displayClearBuffer(){
   u8g2.clearBuffer();
 }
 
+void displaySDWorking(bool working){
+  // pass
+}
+
 #endif //Board filter

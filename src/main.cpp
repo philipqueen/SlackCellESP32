@@ -137,6 +137,7 @@ void setup() {
   init_sd();
 
   displayClearBuffer();
+  displaySDWorking(sd_ready); // TODO: update this if SD card becomes unavailable during use
 }
 
 
