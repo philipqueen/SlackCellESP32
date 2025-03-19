@@ -15,8 +15,14 @@ Tested with and recommended for Heltec WifiKit32 V2 or V3 controller
 #include "FS.h"
 #include "SD.h"
 
+// libraries for wifi
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <WebServer.h>
+
 #include "pins.h"
 #include "display.h"
+#include "index.h"
 
 #define CSV_NAME "/slackcell.txt" // TODO: not sure if these should live in another file
 #define CSV_HEADER "Reading ID, Time (ms), Force (N) \r\n"
@@ -32,6 +38,9 @@ void writeSD(int readingID, long timeNow, long force);
 void writeFile(fs::FS &fs, const char * path, const char * message);
 void appendFile(fs::FS &fs, const char * path, const char * message);
 void Display(void * parameter);
+void RunWebServer(void * parameter);
+void handleRoot();
+void handleADC();
 
 #ifdef USE_VEXT
 void VextON(void);
@@ -58,6 +67,7 @@ const float LOADCELL_DIVIDER_lb = LOADCELL_DIVIDER_N * 4.448;
 
 HX711 loadcell; //setup HX711 object
 TaskHandle_t DisplayTask;
+TaskHandle_t WebServerTask;
 QueueHandle_t queue;
 
 unsigned long timestamp = 0;
@@ -80,6 +90,11 @@ int readingID = 0;
 unsigned long timeNow = 0;
 
 bool Switch_state = false;
+
+WebServer server(80);
+
+const char *ssid = "captive";
+const char *password = NULL;
 
 void setup() {
   Serial.begin(baud);
@@ -184,6 +199,38 @@ void init_sd(){
 
   sd_ready = true;
   // TODO: display a striked out SD in one corner if not available. But don't do it here, because the display is cleared afterwards
+
+  WiFi.mode(WIFI_AP);
+    
+  IPAddress local_IP(192, 168, 4, 1);
+  IPAddress gateway(192, 168, 4, 1);
+  IPAddress subnet(255, 255, 255, 0);
+
+  WiFi.softAPConfig(local_IP, gateway, subnet);
+  WiFi.softAP(ssid, password);
+
+
+  Serial.println("");
+  Serial.print("Connected to ");
+  Serial.println(ssid);
+  Serial.print("IP address: ");
+  Serial.println(WiFi.softAPIP());
+ 
+  server.on("/", handleRoot);
+  server.on("/readADC", handleADC);
+ 
+  server.begin();
+  Serial.println("HTTP server started");
+
+  xTaskCreatePinnedToCore(
+    RunWebServer, /* Function to implement the task */
+    "WebServerTask", /* Name of the task */
+    10000,  /* Stack size in words */
+    NULL,  /* Task input parameter */
+    0,  /* Priority of the task */
+    &WebServerTask,  /* Task handle. */
+    1
+  );
 }
 
 void loop() {
@@ -237,6 +284,13 @@ void Display(void * parameter) {
       prevMaxForce = maxForce;
       displayMaxForce(maxForce);
     }
+  }
+}
+
+void RunWebServer(void * parameter) {
+  for(;;){
+    server.handleClient();
+    delay(0.001);
   }
 }
 
@@ -310,3 +364,14 @@ void VextOFF(void) //Vext default OFF
   digitalWrite(Vext, HIGH);
 }
 #endif //USE_VEXT
+
+void handleRoot() {
+  String s = INDEX_HTML;
+  server.send(200, "text/html", s);
+ }
+  
+ void handleADC() {;
+  String forceString = String(force);
+  
+  server.send(200, "text/plain", forceString);
+ }
