@@ -19,22 +19,22 @@ const char INDEX_HTML[] PROGMEM = R"~~~(
 <body>
 
 <div class="card">
-  <h4>The ESP32 Update web page without refresh</h4><br>
-  <h1>Sensor Value:<span id="ADCValue">0</span></h1><br>
-  <br><a href="https://circuits4you.com">Circuits4you.com</a>
+  <h3>Welcome to the SlackCell</h3><br>
+  <h1>Force: <span id="ForceValue">0</span> N</h1><br>
+  <br><a href="https://github.com/philipqueen/SlackCellESP32">View Source Code</a>
 </div>
 <script>
 
 setInterval(function() {
   // Call a function repetatively with 2 Second interval
   getData();
-}, 2000); //2000mSeconds update rate
+}, 12); // 12 ms update rate
 
 function getData() {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
-      document.getElementById("ADCValue").innerHTML =
+      document.getElementById("ForceValue").innerHTML =
       this.responseText;
     }
   };

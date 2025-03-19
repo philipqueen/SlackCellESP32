@@ -290,7 +290,6 @@ void Display(void * parameter) {
 void RunWebServer(void * parameter) {
   for(;;){
     server.handleClient();
-    delay(0.001);
   }
 }
 
