@@ -17,7 +17,6 @@ READING_AVG_TIMES: number of readings to average for the HX711.
 //Wrapper to include this file only once
 #ifndef PINS_SEEN
 #define PINS_SEEN
-#endif
 
 #if defined(BOARD_HELTEC_V2)
 // internal OLED wiring
@@ -58,7 +57,9 @@ const uint8_t LOADCELL_SCK_PIN = 40;
 const uint8_t LOADCELL_DOUT_PIN = 41;
 //Controls
 #define USE_BUTTON
-const uint8_t BUTTON_PIN = 2;
+const uint8_t BUTTON_PIN = 4;
+#define USE_SLEEP
+const gpio_num_t POWER_BUTTON_PIN = GPIO_NUM_2;
 
 #define USE_VEXT
 #define READING_AVG_TIMES 7
@@ -83,3 +84,5 @@ const uint8_t BUTTON_PIN = 0;
 #define READING_AVG_TIMES 1
 
 #endif
+
+#endif //PINS_SEEN
