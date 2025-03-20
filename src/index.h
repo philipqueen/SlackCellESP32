@@ -28,7 +28,7 @@ const char INDEX_HTML[] PROGMEM = R"~~~(
 setInterval(function() {
   // Call a function repetatively with 2 Second interval
   getData();
-}, 12); // 12 ms update rate
+}, 1); // 1 ms update rate
 
 function getData() {
   var xhttp = new XMLHttpRequest();

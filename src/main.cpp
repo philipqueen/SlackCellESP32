@@ -34,6 +34,7 @@ Tested with and recommended for Heltec WifiKit32 V2 or V3 controller
 
 //Function prototypes (needed for Platform IO and every other normal c++ file, its just the Arduino IDE uses magic to get rid of them)
 void init_sd();
+void init_webserver();
 void writeSD(int readingID, long timeNow, long force);
 void writeFile(fs::FS &fs, const char * path, const char * message);
 void appendFile(fs::FS &fs, const char * path, const char * message);
@@ -93,7 +94,7 @@ bool Switch_state = false;
 
 WebServer server(80);
 
-const char *ssid = "captive";
+const char *ssid = "SlackCell";
 const char *password = NULL;
 
 void setup() {
@@ -151,6 +152,8 @@ void setup() {
   delay(SD_START_DELAY);
   init_sd();
 
+  init_webserver();
+
   displayClearBuffer();
 }
 
@@ -199,7 +202,10 @@ void init_sd(){
 
   sd_ready = true;
   // TODO: display a striked out SD in one corner if not available. But don't do it here, because the display is cleared afterwards
+}
 
+void init_webserver(){
+  
   WiFi.mode(WIFI_AP);
     
   IPAddress local_IP(192, 168, 4, 1);
