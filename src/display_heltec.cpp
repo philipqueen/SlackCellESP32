@@ -7,6 +7,8 @@
 #include "pins.h"
 #include "U8g2lib.h" //library for OLED
 
+bool initialized = false;
+
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C   u8g2(U8G2_R2, OLED_RESET_PIN, OLED_CLOCK_PIN, OLED_DATA_PIN); //setup display connection
 
 //number: number to display
@@ -45,10 +47,25 @@ void displayInit(){
   u8g2.drawStr(0, 0, "SLACK");
   u8g2.drawStr(0, 36, "CELL");
   u8g2.sendBuffer();
+
+  initialized = true;
 }
 
 void displayClearBuffer(){
   u8g2.clearBuffer();
+}
+
+void displaySleep(){
+  // This function also get's called when waking up from deep sleep,
+  // where the display will not be initialized yet
+  // This condition prevents error's in this case
+  if(initialized){
+    u8g2.setPowerSave(1);
+  }
+}
+
+void displayWakeup(){
+  u8g2.setPowerSave(0);
 }
 
 #endif //Board filter

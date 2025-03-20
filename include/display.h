@@ -10,6 +10,8 @@ void displayForce(long force);
 void displayMaxForce(long force);
 void displayInit();
 void displayClearBuffer();
+void displaySleep();
+void displayWakeup();
 
 
 #endif //DISPLAY_SEEN

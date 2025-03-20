@@ -17,6 +17,7 @@ Tested with and recommended for Heltec WifiKit32 V2 or V3 controller
 
 #include "pins.h"
 #include "display.h"
+#include "power.h"
 
 #define CSV_NAME "/slackcell.txt" // TODO: not sure if these should live in another file
 #define CSV_HEADER "Reading ID, Time (ms), Force (N) \r\n"
@@ -32,11 +33,6 @@ void writeSD(int readingID, long timeNow, long force);
 void writeFile(fs::FS &fs, const char * path, const char * message);
 void appendFile(fs::FS &fs, const char * path, const char * message);
 void Display(void * parameter);
-
-#ifdef USE_VEXT
-void VextON(void);
-void VextOFF(void);
-#endif
 
 #ifdef USE_VSPI
 SPIClass spiVspi(VSPI);
@@ -83,14 +79,11 @@ bool Switch_state = false;
 
 void setup() {
   Serial.begin(baud);
+  powerInit();
+
   Serial.println("Welcome to SlackCell!");
   Serial.print("Sketch:   ");   Serial.println(__FILE__);
   Serial.print("Uploaded: ");   Serial.println(__DATE__);
-
-#ifdef USE_VEXT
-  //turn on external devices
-  VextON();
-#endif //USE_VEXT
 
 #ifdef USE_SWITCH
   // Setting up the Switch
@@ -220,6 +213,9 @@ void loop() {
     if(sd_ready && recording){
       writeSD(readingID, timeNow, reading);
     }
+
+    powerTick(reading);
+
     //increasing readingID outside of if, because it is also used when recording is off
     readingID++;
   }
@@ -294,19 +290,3 @@ void resetMaxForce(){
   maxForce = 0;
 }
 #endif
-
-#ifdef USE_VEXT
-//Turn external power supply on
-void VextON(void)
-{
-  pinMode(Vext,OUTPUT);
-  digitalWrite(Vext, LOW);
-}
-
-//Turn external power supply off
-void VextOFF(void) //Vext default OFF
-{
-  pinMode(Vext,OUTPUT);
-  digitalWrite(Vext, HIGH);
-}
-#endif //USE_VEXT
