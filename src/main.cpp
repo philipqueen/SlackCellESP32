@@ -253,7 +253,7 @@ void loop() {
 #endif
 
     }
-    //Serial.printf("Reading: %ld N\n", abs(reading));
+    Serial.printf("Reading: %ld N\n", abs(reading));
     
     if (sd_ready && recording) {
       writeSD(readingID, timeNow, reading);
