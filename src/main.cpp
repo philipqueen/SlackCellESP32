@@ -9,8 +9,6 @@ Tested with and recommended for Heltec WifiKit32 V2 or V3 controller
 
 #include <Arduino.h>
 
-#include "HX711.h" //library for loadcell amplifier
-
 // libraries for SD card
 #include "FS.h"
 #include "SD.h"
@@ -18,19 +16,28 @@ Tested with and recommended for Heltec WifiKit32 V2 or V3 controller
 #include "pins.h"
 #include "display.h"
 
+//moved below pins to capture USE_HX71708 declaration
+#ifdef USE_HX71708
+#include <HX71708.h> // alpha fork for HX71708
+#else
+#include "HX711.h" //library for loadcell amplifier
+#endif
+
 #define CSV_NAME "/slackcell.txt" // TODO: not sure if these should live in another file
 #define CSV_HEADER "Reading ID, Time (ms), Force (N) \r\n"
 #define SD_MESSAGE_LENGTH 60
 #define SD_START_DELAY 2000
+#define SD_BATCH_SIZE 16
 
 #define TARE_AVERAGE_TIME 30
 #define MAX_TARE_VALUE 30
 
 //Function prototypes (needed for Platform IO and every other normal c++ file, its just the Arduino IDE uses magic to get rid of them)
 void init_sd();
-void writeSD(int readingID, long timeNow, long force);
 void writeFile(fs::FS &fs, const char * path, const char * message);
 void appendFile(fs::FS &fs, const char * path, const char * message);
+void writeSD(int readingID, long timeNow, long force);
+void appendMeasurement(void * parameter);
 void Display(void * parameter);
 
 #ifdef USE_VEXT
@@ -56,9 +63,20 @@ const float LOADCELL_DIVIDER_N = -232;
 const float LOADCELL_DIVIDER_kg = LOADCELL_DIVIDER_N * 9.81;
 const float LOADCELL_DIVIDER_lb = LOADCELL_DIVIDER_N * 4.448;
 
+
+#ifdef USE_HX71708
+HX71708 loadcell; //setup HX711 object
+#else
 HX711 loadcell; //setup HX711 object
+#endif
+
+
 TaskHandle_t DisplayTask;
+TaskHandle_t appendMeasurementTask;
 QueueHandle_t queue;
+QueueHandle_t sdQueue;
+
+File dataFile;
 
 unsigned long timestamp = 0;
 long maxForce = 0;
@@ -119,6 +137,11 @@ void setup() {
     Serial.println("Error creating the queue");
   }
 
+  sdQueue = xQueueCreate(64, sizeof(String));
+  if (!sdQueue) {
+    Serial.println("Error creating SD queue");
+  }
+
   xTaskCreatePinnedToCore(
     Display, /* Function to implement the task */
     "DisplayTask", /* Name of the task */
@@ -128,13 +151,27 @@ void setup() {
     &DisplayTask,  /* Task handle. */
     0); /* Core where the task should run */
 
-  sdMessage.reserve(SD_MESSAGE_LENGTH);
+
+  
 
   //This might seem like a unnecessary start up delay, just to see "Slack Cell" longer...
   //but it also stabilizes the signal levels to not have multiple kilos of maxForce just from booting up...
   //and gives the SD card time to initialize
   delay(SD_START_DELAY);
   init_sd();
+
+
+  xTaskCreatePinnedToCore(
+    appendMeasurement, "appendMeasurementTask", 
+    8192, 
+    NULL, 
+    1, 
+    &appendMeasurementTask, 
+    1);
+
+
+  sdMessage.reserve(SD_MESSAGE_LENGTH);
+
 
   displayClearBuffer();
 }
@@ -179,7 +216,7 @@ void init_sd(){
   else {
     Serial.println("File already exists");
   }
-  appendFile(SD, CSV_NAME, CSV_HEADER); // We always append the header to demarcate different sessions
+  //appendFile(SD, CSV_NAME, CSV_HEADER); // We always append the header to demarcate different sessions
   file.close();
 
   sd_ready = true;
@@ -195,7 +232,7 @@ void loop() {
 
   if (loadcell.is_ready()) {
     reading = std::lround(loadcell.get_units(1));
-    timeNow = millis(); //milliseconds since startup
+    timeNow = micros(); //milliseconds since startup
     maxForce = max(reading, maxForce);
 
     if(Switch_state == false){
@@ -216,11 +253,11 @@ void loop() {
 #endif
 
     }
-    Serial.printf("Reading: %ld N\n", abs(reading));
-    if(sd_ready && recording){
+    //Serial.printf("Reading: %ld N\n", abs(reading));
+    
+    if (sd_ready && recording) {
       writeSD(readingID, timeNow, reading);
     }
-    //increasing readingID outside of if, because it is also used when recording is off
     readingID++;
   }
 }
@@ -240,16 +277,43 @@ void Display(void * parameter) {
   }
 }
 
-void writeSD(int readingID, long timeNow, long force) {
-  sdMessage = "";
-  sdMessage += readingID;
-  sdMessage += ",";
-  sdMessage += timeNow;
-  sdMessage += ",";
-  sdMessage += force;
-  sdMessage += "\n";
-  appendFile(SD, CSV_NAME, sdMessage.c_str());
+void appendMeasurement(void * parameter) {
+  String* msg;
+  String buffer = "";
+  int count = 0;
+
+  dataFile = SD.open(CSV_NAME, FILE_APPEND);
+  if (!dataFile) {
+    Serial.println("Failed to open file in writer task.");
+    vTaskDelete(NULL);
+    return;
+  }
+
+  dataFile.println(CSV_HEADER);
+  dataFile.flush();
+
+  while (true) {
+    if (xQueueReceive(sdQueue, &msg, portMAX_DELAY)) {
+      buffer += *msg + "\n";
+      delete msg;  // free the memory after copying the data
+      count++;
+
+      if (count >= SD_BATCH_SIZE) {
+        dataFile.print(buffer);
+        dataFile.flush();
+        buffer = "";
+        count = 0;
+      }
+    }
+  }
 }
+
+
+void writeSD(int readingID, long timeNow, long force) {
+  String* msg = new String(String(readingID) + "," + timeNow + "," + force);
+  xQueueSend(sdQueue, &msg, 0); // send the pointer
+}
+
 
 // Write to the SD card (DON'T MODIFY THIS FUNCTION)
 void writeFile(fs::FS &fs, const char * path, const char * message) {

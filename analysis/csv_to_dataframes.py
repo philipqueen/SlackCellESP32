@@ -39,7 +39,7 @@ if __name__ == "__main__":
         for key in df.columns:
             print(f"Column: {key}")
         df["Time Difference"] = df["Time (ms)"].diff()
-        df["Sample Rate (Hz)"] = 1000 / df["Time Difference"]
+        df["Sample Rate (Hz)"] = 1000000 / df["Time Difference"]
         print(f"DataFrame '{name}':")
         print(df.head(10))
 
