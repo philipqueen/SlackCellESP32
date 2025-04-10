@@ -24,7 +24,7 @@ Tested with and recommended for Heltec WifiKit32 V2 or V3 controller
 #endif
 
 #define CSV_NAME "/slackcell.txt" // TODO: not sure if these should live in another file
-#define CSV_HEADER "Reading ID, Time (ms), Force (N) \r\n"
+#define CSV_HEADER "Reading ID, Time (µs), Force (N) \r\n"
 #define SD_MESSAGE_LENGTH 60
 #define SD_START_DELAY 2000
 #define SD_BATCH_SIZE 16
@@ -48,7 +48,7 @@ void VextOFF(void);
 #ifdef USE_VSPI
 SPIClass spiVspi(VSPI);
 #endif
-
+  
 #ifdef USE_BUTTON
 #include "OneButton.h"
 OneButton display_active_btn(BUTTON_PIN, true);
@@ -58,8 +58,12 @@ void resetMaxForce();
 
 const long baud = 115200;
 
-const long LOADCELL_OFFSET = 2330;
-const float LOADCELL_DIVIDER_N = -232;
+//const long LOADCELL_OFFSET = 2330;
+//const float LOADCELL_DIVIDER_N = -232;
+
+const long LOADCELL_OFFSET =18911;
+const float LOADCELL_DIVIDER_N = 1491.765;
+
 const float LOADCELL_DIVIDER_kg = LOADCELL_DIVIDER_N * 9.81;
 const float LOADCELL_DIVIDER_lb = LOADCELL_DIVIDER_N * 4.448;
 
