@@ -75,14 +75,13 @@ const uint8_t BUTTON_PIN = 2;
 #define USE_VEXT
 #define READING_AVG_TIMES 7
 
-#elif defined(BOARD_XIAO_S3_ADS1220)
+#elif defined(BOARD_XIAO_S3)
 // internal OLED wiring
 const uint8_t OLED_CLOCK_PIN = 6;
 const uint8_t OLED_RESET_PIN = 12;
 const uint8_t OLED_DATA_PIN = 43;
 #define OLED_ROTATION U8G2_R2
 // SD Card circuit wiring
-// The Heltec V3 allows usage of any GPIO pins as SPI, these are selected to be short to connect on a prototype grid pcb
 #define CUSTOM_SPI_PINS
 const uint8_t SD_MISO_PIN = 8;
 const uint8_t SD_MOSI_PIN = 9;

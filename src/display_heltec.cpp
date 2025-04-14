@@ -1,5 +1,5 @@
 //only use this display implementation for Heltec boards
-#if defined(BOARD_HELTEC_V2) || defined(BOARD_HELTEC_V3) || defined(BOARD_XIAO_S3) || defined(BOARD_XIAO_S3_ADS1220)
+#if defined(BOARD_HELTEC_V2) || defined(BOARD_HELTEC_V3) || defined(BOARD_XIAO_S3)
 
 #include <Arduino.h>
 

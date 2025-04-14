@@ -31,7 +31,7 @@ Tested with and recommended for Heltec WifiKit32 V2 or V3 controller
 struct LogEntry {
   int32_t logID;
   uint32_t logMicros;
-  long logForce;
+  float logForce;
 };
 
 int droppedlogs=0;
@@ -40,11 +40,9 @@ int droppedlogs=0;
 void init_sd();
 void writeFile(fs::FS &fs, const char * path, const char * message);
 void appendFile(fs::FS &fs, const char * path, const char * message);
-void writeSD(const LogEntry& entry);
 void appendMeasurement(void * parameter);
 void Display(void * parameter);
 void getMeasurement(void * parameter);
-void IRAM_ATTR drdyISR();
 void setSampleRate(bool turbo, uint8_t rateLevel);
 
 #ifdef USE_VEXT
@@ -64,13 +62,8 @@ void resetMaxForce();
 #endif
 
 SPIClass spiADS1220(HSPI);  // Create the SPI instance
-//ADS1220_WE loadcell(ADS1220_CS_PIN, ADS1220_DRDY_PIN, spiADS1220);  // Use custom SPI
 ADS1220_WE loadcell = ADS1220_WE(&spiADS1220, ADS1220_CS_PIN, ADS1220_DRDY_PIN);
-volatile bool newDataReady = true;
 
-void IRAM_ATTR drdyISR() {
-  newDataReady = true;
-}
 
 const long baud =  115200;
 
@@ -133,14 +126,13 @@ void setup() {
   display_active_btn.attachLongPressStart(resetMaxForce);
 #endif
 
-  #ifndef BOARD_XIAO_S3_ADS1220
+  #ifndef BOARD_XIAO_S3
   displayInit();
   #endif
 
   init_sd();
     delay(SD_START_DELAY);
 
-  attachInterrupt(digitalPinToInterrupt(ADS1220_DRDY_PIN), drdyISR, FALLING);
   spiADS1220.begin(ADS1220_SCLK_PIN, ADS1220_MISO_PIN, ADS1220_MOSI_PIN, ADS1220_CS_PIN);
   if (!loadcell.init()) {
     Serial.println("ADS1220 not found!");
@@ -155,12 +147,7 @@ void setup() {
   pinMode(ADS1220_DRDY_PIN, INPUT);
   loadcell.setLowSidePowerSwitch(ADS1220_SWITCH);  
   loadcell.setFIRFilter(ADS1220_50HZ_60HZ);
-  //loadcell.setOperatingMode(ADS1220_NORMAL_MODE);
-  //loadcell.setOperatingMode(ADS1220_TURBO_MODE);
-  //delay(100);
-  //loadcell.setDataRate(ADS1220_DR_LVL_6);
-  //delay(100);
-  setSampleRate(true,5);
+  setSampleRate(false,6);
 
   queue = xQueueCreate(2, sizeof(long));
 
@@ -183,6 +170,8 @@ void setup() {
     &DisplayTask,  /* Task handle. */
     0); /* Core where the task should run */
 
+
+    if (sd_ready){
   xTaskCreatePinnedToCore(
     appendMeasurement, "appendMeasurementTask", 
     8192, 
@@ -190,8 +179,8 @@ void setup() {
     10, 
     &appendMeasurementTask, 
     0);
-
-
+    }
+  
     xTaskCreatePinnedToCore(
       getMeasurement, "getMeasurementTask", 
       8192, 
@@ -275,7 +264,6 @@ void Display(void * parameter) {
   }
 }
 
-
 void getMeasurement(void * parameter){
   TickType_t lastWakeTime = xTaskGetTickCount();
 
@@ -283,14 +271,15 @@ void getMeasurement(void * parameter){
 
     int reps = (currentSPS > 1000) ? 2 : 1;
     for (int i = 0; i < reps; i++) {
-    reading = loadcell.getRawData();
-    force = (reading - LOADCELL_OFFSET) / LOADCELL_DIVIDER_N;
+    long raw2 = loadcell.getRawData();
+    float force2 = (raw2 - LOADCELL_OFFSET) / LOADCELL_DIVIDER_N;
+    // i made these local to the function and in float because i was getting weird logs of 0.0 / nan and didn't know why
     timeNow = micros();
-    maxForce = max(force, maxForce); 
+    maxForce = max(long(force2), maxForce); 
 
-    LogEntry entry = { readingID++, timeNow, force};
+    LogEntry entry = { readingID++, timeNow, force2};
     Serial.print("Force: ");
-    Serial.println(force);
+    Serial.println(force2);
 
     if (sd_ready && recording){
     if (xQueueSend(sdQueue, &entry, 0) != pdTRUE) {
@@ -337,7 +326,9 @@ void appendMeasurement(void * parameter) {
   while (true) {
     if (xQueueReceive(sdQueue, &batch[count], portMAX_DELAY)) {
       count++;
-      if (count >= SD_BATCH_SIZE) {
+      if (count >= SD_BATCH_SIZE) {  
+        // going to need to handle when recording goes FALSE because the data left won't hit SD_BATCH_SIZE
+        // also pause this task when it isn't needed
         dataFile.write((uint8_t*)batch, sizeof(batch));
         count = 0;
         flushCounter++;
