@@ -28,9 +28,15 @@ const uint8_t OLED_DATA_PIN = 4;
 // SD Card circuit wiring
 // With the Heltec V2 the board default SPI pins are used SCK = 18, MISO = 19, and MOSI = 23
 const uint8_t SD_CS_PIN = 2;
-// HX711 circuit wiring
-const uint8_t LOADCELL_SCK_PIN = 26;
-const uint8_t LOADCELL_DOUT_PIN = 25;
+
+
+// ADS1220 circuit wiring
+const uint8_t ADS1220_DRDY_PIN= ;
+const uint8_t ADS1220_MISO_PIN= ;
+const uint8_t ADS1220_MOSI_PIN=;
+const uint8_t ADS1220_SCLK_PIN= ;
+const uint8_t ADS1220_CS_PIN=;
+
 //Controls
 #define USE_SWITCH
 const uint8_t SWITCH_PIN = 22;
@@ -53,9 +59,15 @@ const uint8_t SD_MISO_PIN = 26;
 const uint8_t SD_MOSI_PIN = 48;
 const uint8_t SD_SCK_PIN =  47;
 const uint8_t SD_CS_PIN = 33;
-// HX711 circuit wiring
-const uint8_t LOADCELL_SCK_PIN = 40;
-const uint8_t LOADCELL_DOUT_PIN = 41;
+
+
+// ADS1220 circuit wiring
+const uint8_t ADS1220_DRDY_PIN= ;
+const uint8_t ADS1220_MISO_PIN= ;
+const uint8_t ADS1220_MOSI_PIN=;
+const uint8_t ADS1220_SCLK_PIN= ;
+const uint8_t ADS1220_CS_PIN=;
+
 //Controls
 #define USE_BUTTON
 const uint8_t BUTTON_PIN = 2;
@@ -63,23 +75,25 @@ const uint8_t BUTTON_PIN = 2;
 #define USE_VEXT
 #define READING_AVG_TIMES 7
 
-#elif defined(BOARD_XIAO_S3)
-#define USE_HX71708
+#elif defined(BOARD_XIAO_S3_ADS1220)
 // internal OLED wiring
 const uint8_t OLED_CLOCK_PIN = 6;
 const uint8_t OLED_RESET_PIN = 12;
-const uint8_t OLED_DATA_PIN = 5;
+const uint8_t OLED_DATA_PIN = 43;
 #define OLED_ROTATION U8G2_R2
 // SD Card circuit wiring
 // The Heltec V3 allows usage of any GPIO pins as SPI, these are selected to be short to connect on a prototype grid pcb
-//#define CUSTOM_SPI_PINS
-//const uint8_t SD_MISO_PIN = 26;
-//const uint8_t SD_MOSI_PIN = 48;
-//const uint8_t SD_SCK_PIN =  47;
+#define CUSTOM_SPI_PINS
+const uint8_t SD_MISO_PIN = 8;
+const uint8_t SD_MOSI_PIN = 9;
+const uint8_t SD_SCK_PIN =  7;
 const uint8_t SD_CS_PIN = 21;
-// HX711 circuit wiring
-const uint8_t LOADCELL_SCK_PIN = 2;
-const uint8_t LOADCELL_DOUT_PIN = 1;
+// ADS1220 circuit wiring
+const uint8_t ADS1220_DRDY_PIN= 4;
+const uint8_t ADS1220_MISO_PIN= 3;
+const uint8_t ADS1220_MOSI_PIN =2;
+const uint8_t ADS1220_SCLK_PIN= 1;
+const uint8_t ADS1220_CS_PIN =5;
 
 //Controls
 //#define USE_BUTTON
@@ -87,7 +101,6 @@ const uint8_t LOADCELL_DOUT_PIN = 1;
 
 //#define USE_VEXT
 #define READING_AVG_TIMES 7
-
 
 #elif defined(BOARD_TTGO_DISPLAY)
 
@@ -98,9 +111,14 @@ const uint8_t SD_MISO_PIN = 27;
 const uint8_t SD_MOSI_PIN = 26;
 const uint8_t SD_SCK_PIN =  25;
 const uint8_t SD_CS_PIN = 2;
-// HX711 circuit wiring
-const uint8_t LOADCELL_SCK_PIN = 33;
-const uint8_t LOADCELL_DOUT_PIN = 32;
+
+// ADS1220 circuit wiring
+const uint8_t ADS1220_DRDY_PIN= ;
+const uint8_t ADS1220_MISO_PIN= ;
+const uint8_t ADS1220_MOSI_PIN=;
+const uint8_t ADS1220_SCLK_PIN= ;
+const uint8_t ADS1220_CS_PIN=;
+
 #define USE_BUTTON
 const uint8_t BUTTON_PIN = 0;
 

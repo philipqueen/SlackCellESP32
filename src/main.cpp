@@ -16,29 +16,36 @@ Tested with and recommended for Heltec WifiKit32 V2 or V3 controller
 #include "pins.h"
 #include "display.h"
 
-//moved below pins to capture USE_HX71708 declaration
-#ifdef USE_HX71708
-#include <HX71708.h> // alpha fork for HX71708
-#else
-#include "HX711.h" //library for loadcell amplifier
-#endif
+#include <ADS1220_WE.h>
+#include <SPI.h>
 
-#define CSV_NAME "/slackcell.txt" // TODO: not sure if these should live in another file
+#define CSV_NAME "/slackcell.bin" // TODO: not sure if these should live in another file
 #define CSV_HEADER "Reading ID, Time (µs), Force (N) \r\n"
 #define SD_MESSAGE_LENGTH 60
 #define SD_START_DELAY 2000
-#define SD_BATCH_SIZE 16
+#define SD_BATCH_SIZE 256
 
 #define TARE_AVERAGE_TIME 30
 #define MAX_TARE_VALUE 30
+
+struct LogEntry {
+  int32_t logID;
+  uint32_t logMicros;
+  long logForce;
+};
+
+int droppedlogs=0;
 
 //Function prototypes (needed for Platform IO and every other normal c++ file, its just the Arduino IDE uses magic to get rid of them)
 void init_sd();
 void writeFile(fs::FS &fs, const char * path, const char * message);
 void appendFile(fs::FS &fs, const char * path, const char * message);
-void writeSD(int readingID, long timeNow, long force);
+void writeSD(const LogEntry& entry);
 void appendMeasurement(void * parameter);
 void Display(void * parameter);
+void getMeasurement(void * parameter);
+void IRAM_ATTR drdyISR();
+void setSampleRate(bool turbo, uint8_t rateLevel);
 
 #ifdef USE_VEXT
 void VextON(void);
@@ -56,27 +63,25 @@ void toggleSwitchState();
 void resetMaxForce();
 #endif
 
-const long baud = 115200;
+SPIClass spiADS1220(HSPI);  // Create the SPI instance
+//ADS1220_WE loadcell(ADS1220_CS_PIN, ADS1220_DRDY_PIN, spiADS1220);  // Use custom SPI
+ADS1220_WE loadcell = ADS1220_WE(&spiADS1220, ADS1220_CS_PIN, ADS1220_DRDY_PIN);
+volatile bool newDataReady = true;
 
-//const long LOADCELL_OFFSET = 2330;
-//const float LOADCELL_DIVIDER_N = -232;
+void IRAM_ATTR drdyISR() {
+  newDataReady = true;
+}
 
-const long LOADCELL_OFFSET =18911;
-const float LOADCELL_DIVIDER_N = 1491.765;
+const long baud =  115200;
 
+const long LOADCELL_OFFSET =-12427.400;
+const float LOADCELL_DIVIDER_N = -528.894897;
 const float LOADCELL_DIVIDER_kg = LOADCELL_DIVIDER_N * 9.81;
 const float LOADCELL_DIVIDER_lb = LOADCELL_DIVIDER_N * 4.448;
 
-
-#ifdef USE_HX71708
-HX71708 loadcell; //setup HX711 object
-#else
-HX711 loadcell; //setup HX711 object
-#endif
-
-
 TaskHandle_t DisplayTask;
 TaskHandle_t appendMeasurementTask;
+TaskHandle_t getMeasurementTask;
 QueueHandle_t queue;
 QueueHandle_t sdQueue;
 
@@ -90,13 +95,16 @@ long avg_reading = 0;
 long prevForce = -100;
 long prevMaxForce = -100;
 
+int currentSPS = 0; // current samples per second setting
+int dataDelayMs = 1; //for getMeasurement scheduling
+
+
 // TODO: should be selectable with buttons, maybe a small menu?
 bool recording = true;
 // Set in init_sd, signals readiness to use the data.txt file on the sd.
 // This allows the program to run without an sd card connected, without trying to write to it all the time.
 bool sd_ready = false;
 
-String sdMessage;
 int readingID = 0;
 
 unsigned long timeNow = 0;
@@ -105,6 +113,7 @@ bool Switch_state = false;
 
 void setup() {
   Serial.begin(baud);
+  delay(2000);
   Serial.println("Welcome to SlackCell!");
   Serial.print("Sketch:   ");   Serial.println(__FILE__);
   Serial.print("Uploaded: ");   Serial.println(__DATE__);
@@ -124,16 +133,34 @@ void setup() {
   display_active_btn.attachLongPressStart(resetMaxForce);
 #endif
 
+  #ifndef BOARD_XIAO_S3_ADS1220
   displayInit();
+  #endif
 
-  loadcell.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-  loadcell.set_offset(LOADCELL_OFFSET);
-  loadcell.set_scale(LOADCELL_DIVIDER_N);
-  force = loadcell.get_units(TARE_AVERAGE_TIME);
-  if (force < MAX_TARE_VALUE) {
-    loadcell.tare();
-    force = 0;
+  init_sd();
+    delay(SD_START_DELAY);
+
+  attachInterrupt(digitalPinToInterrupt(ADS1220_DRDY_PIN), drdyISR, FALLING);
+  spiADS1220.begin(ADS1220_SCLK_PIN, ADS1220_MISO_PIN, ADS1220_MOSI_PIN, ADS1220_CS_PIN);
+  if (!loadcell.init()) {
+    Serial.println("ADS1220 not found!");
+    while (1);
   }
+  Serial.println("ADS1220 connected!");
+  loadcell.setCompareChannels(ADS1220_MUX_1_2);
+  loadcell.setGain(ADS1220_GAIN_128);
+  loadcell.setVRefSource(ADS1220_VREF_REFP1_REFN1);
+  loadcell.setVRefValue_V(3.3);
+  loadcell.setConversionMode(ADS1220_CONTINUOUS);
+  pinMode(ADS1220_DRDY_PIN, INPUT);
+  loadcell.setLowSidePowerSwitch(ADS1220_SWITCH);  
+  loadcell.setFIRFilter(ADS1220_50HZ_60HZ);
+  //loadcell.setOperatingMode(ADS1220_NORMAL_MODE);
+  //loadcell.setOperatingMode(ADS1220_TURBO_MODE);
+  //delay(100);
+  //loadcell.setDataRate(ADS1220_DR_LVL_6);
+  //delay(100);
+  setSampleRate(true,5);
 
   queue = xQueueCreate(2, sizeof(long));
 
@@ -141,7 +168,8 @@ void setup() {
     Serial.println("Error creating the queue");
   }
 
-  sdQueue = xQueueCreate(64, sizeof(String));
+  sdQueue = xQueueCreate(128, sizeof(LogEntry)); 
+
   if (!sdQueue) {
     Serial.println("Error creating SD queue");
   }
@@ -155,27 +183,22 @@ void setup() {
     &DisplayTask,  /* Task handle. */
     0); /* Core where the task should run */
 
-
-  
-
-  //This might seem like a unnecessary start up delay, just to see "Slack Cell" longer...
-  //but it also stabilizes the signal levels to not have multiple kilos of maxForce just from booting up...
-  //and gives the SD card time to initialize
-  delay(SD_START_DELAY);
-  init_sd();
-
-
   xTaskCreatePinnedToCore(
     appendMeasurement, "appendMeasurementTask", 
     8192, 
     NULL, 
-    1, 
+    10, 
     &appendMeasurementTask, 
-    1);
+    0);
 
 
-  sdMessage.reserve(SD_MESSAGE_LENGTH);
-
+    xTaskCreatePinnedToCore(
+      getMeasurement, "getMeasurementTask", 
+      8192, 
+      NULL, 
+      10, 
+      &getMeasurementTask, 
+      1);
 
   displayClearBuffer();
 }
@@ -188,14 +211,13 @@ void init_sd(){
     //already initialized, skipping
     return;
 
-  sdMessage.reserve(SD_MESSAGE_LENGTH);
-
   #ifdef CUSTOM_SPI_PINS
   SPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
   #endif
 
   // Initialize SD card
-  if(!SD.begin(SD_CS_PIN)) {
+
+  if(!SD.begin(SD_CS_PIN,SPI, 40000000)) {
     Serial.println("Card Mount Failed");
     return;
   }
@@ -220,7 +242,7 @@ void init_sd(){
   else {
     Serial.println("File already exists");
   }
-  //appendFile(SD, CSV_NAME, CSV_HEADER); // We always append the header to demarcate different sessions
+  appendFile(SD, CSV_NAME, CSV_HEADER); // We always append the header to demarcate different sessions
   file.close();
 
   sd_ready = true;
@@ -233,40 +255,11 @@ void loop() {
   #elif defined(USE_BUTTON)
       display_active_btn.tick();
   #endif
-
-  if (loadcell.is_ready()) {
-    reading = std::lround(loadcell.get_units(1));
-    timeNow = micros(); //milliseconds since startup
-    maxForce = max(reading, maxForce);
-
-    if(Switch_state == false){
-#if READING_AVG_TIMES == 1
-      xQueueSend(queue, &reading, 0);
-#else
-      //The display of the Heltec V3 for example is so slow, that it drops 80% of the values of the display queue, so we might as well average them.
-      avg_reading += reading;
-      //This modulo construct calls the first branch every READING_AVG_TIMES-th time and sends the force to the display.
-      if(readingID % READING_AVG_TIMES == 0){
-        //the first avg_reading after boot will be wrong, but it will only be seen for a few ms once, and will never be written to sd. So we just don't care.
-        avg_reading = std::lround(avg_reading / float(READING_AVG_TIMES));
-        //If the queue is full, the reading just get's discarded for the display, so the mcu can continue writing to the sd.
-        //Keeping the sampling rate for sd is more import than displaying
-        xQueueSend(queue, &avg_reading, 0);
-        avg_reading = 0;
-      }
-#endif
-
-    }
-    Serial.printf("Reading: %ld N\n", abs(reading));
-    
-    if (sd_ready && recording) {
-      writeSD(readingID, timeNow, reading);
-    }
-    readingID++;
-  }
 }
 
 void Display(void * parameter) {
+  TickType_t lastWakeTime = xTaskGetTickCount();
+
   for(;;){
     xQueueReceive(queue, &force, portMAX_DELAY);
     Serial.println(force);
@@ -278,13 +271,61 @@ void Display(void * parameter) {
       prevMaxForce = maxForce;
       displayMaxForce(maxForce);
     }
+    vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(100)); // display at 10 Hz
+  }
+}
+
+
+void getMeasurement(void * parameter){
+  TickType_t lastWakeTime = xTaskGetTickCount();
+
+  for (;;) {
+
+    int reps = (currentSPS > 1000) ? 2 : 1;
+    for (int i = 0; i < reps; i++) {
+    reading = loadcell.getRawData();
+    force = (reading - LOADCELL_OFFSET) / LOADCELL_DIVIDER_N;
+    timeNow = micros();
+    maxForce = max(force, maxForce); 
+
+    LogEntry entry = { readingID++, timeNow, force};
+    Serial.print("Force: ");
+    Serial.println(force);
+
+    if (sd_ready && recording){
+    if (xQueueSend(sdQueue, &entry, 0) != pdTRUE) {
+      // Queue full — remove oldest
+      LogEntry dummy;
+      
+      if (xQueueReceive(sdQueue, &dummy, 0) == pdTRUE) {
+        // Try again — should succeed now
+        if (xQueueSend(sdQueue, &entry, 0) != pdTRUE) {
+          // This would only fail in rare timing situations
+          Serial.println("⚠️ Failed to replace old data");
+          droppedlogs++;
+        }
+      }
+      droppedlogs++;
+    
+      float secondsRunning = millis() / 1000.0;
+      float avgDropsPerSecond = droppedlogs / secondsRunning;
+    
+      Serial.print("Dropped sample ");
+      Serial.print(droppedlogs);
+      Serial.print(" | Average drops/sec: ");
+      Serial.println(avgDropsPerSecond, 2);
+    }
+    }
+  }
+    vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(dataDelayMs));  // 1 kHz
+
   }
 }
 
 void appendMeasurement(void * parameter) {
-  String* msg;
-  String buffer = "";
+  LogEntry batch[SD_BATCH_SIZE];
   int count = 0;
+  int flushCounter = 0;  // Count how many batches since last flush
 
   dataFile = SD.open(CSV_NAME, FILE_APPEND);
   if (!dataFile) {
@@ -293,30 +334,23 @@ void appendMeasurement(void * parameter) {
     return;
   }
 
-  dataFile.println(CSV_HEADER);
-  dataFile.flush();
-
   while (true) {
-    if (xQueueReceive(sdQueue, &msg, portMAX_DELAY)) {
-      buffer += *msg + "\n";
-      delete msg;  // free the memory after copying the data
+    if (xQueueReceive(sdQueue, &batch[count], portMAX_DELAY)) {
       count++;
-
       if (count >= SD_BATCH_SIZE) {
-        dataFile.print(buffer);
-        dataFile.flush();
-        buffer = "";
+        dataFile.write((uint8_t*)batch, sizeof(batch));
         count = 0;
+        flushCounter++;
+
+        if (flushCounter >= 4) {  // flush every 4 batches
+          dataFile.flush();
+          flushCounter = 0;
+        }
       }
     }
   }
 }
 
-
-void writeSD(int readingID, long timeNow, long force) {
-  String* msg = new String(String(readingID) + "," + timeNow + "," + force);
-  xQueueSend(sdQueue, &msg, 0); // send the pointer
-}
 
 
 // Write to the SD card (DON'T MODIFY THIS FUNCTION)
@@ -334,6 +368,30 @@ void writeFile(fs::FS &fs, const char * path, const char * message) {
     Serial.println("Write failed");
   }
   file.close();
+}
+
+
+
+void setSampleRate(bool turbo, uint8_t rateLevel) {
+  const ads1220DataRate rateMap[7] = {
+    ADS1220_DR_LVL_0, ADS1220_DR_LVL_1, ADS1220_DR_LVL_2,
+    ADS1220_DR_LVL_3, ADS1220_DR_LVL_4, ADS1220_DR_LVL_5,
+    ADS1220_DR_LVL_6
+  };
+
+  const int spsTable[2][7] = {
+    {20, 45, 90, 175, 330, 600, 1000},   // Normal
+    {40, 90, 180, 350, 660, 1200, 2000}  // Turbo
+  };
+
+  if (rateLevel > 6) rateLevel = 6;
+
+  loadcell.setOperatingMode(turbo ? ADS1220_TURBO_MODE : ADS1220_NORMAL_MODE);
+  delay(100);
+  loadcell.setDataRate(rateMap[rateLevel]);
+
+  currentSPS = spsTable[turbo ? 1 : 0][rateLevel];
+  dataDelayMs = (1000 + currentSPS - 1) / currentSPS;  // round up
 }
 
 // Append data to the SD card (DON'T MODIFY THIS FUNCTION)

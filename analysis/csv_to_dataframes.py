@@ -43,8 +43,10 @@ if __name__ == "__main__":
         print(f"DataFrame '{name}':")
         print(df.head(10))
 
-        print(f"Average Sample Rate: {df['Sample Rate (Hz)'].mean()}")
-        print(f"Median Sample Rate: {df['Sample Rate (Hz)'].median()}")
-        print(f"Standard Deviation of Sample Rate: {df['Sample Rate (Hz)'].std()}")
-        print(f"Minimum Sample Rate: {df['Sample Rate (Hz)'].min()}")
-        print(f"Maximum Sample Rate: {df['Sample Rate (Hz)'].max()}")
+        print(f"Average Sample Rate: {df['Sample Rate (Hz)'].mean():.2f}")
+        print(f"Median Sample Rate: {df['Sample Rate (Hz)'].median():.2f}")
+        print(f"Standard Deviation of Sample Rate: {df['Sample Rate (Hz)'].std():.2f}")
+        print(f"Average Deviation of Sample Rate: {(df['Sample Rate (Hz)'] - df['Sample Rate (Hz)'].mean()).abs().mean():.2f}")
+        print(f"Minimum Sample Rate: {df['Sample Rate (Hz)'].min():.2f}")
+        print(f"Maximum Sample Rate: {df['Sample Rate (Hz)'].max():.2f}")
+

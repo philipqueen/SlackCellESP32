@@ -1,5 +1,5 @@
 //only use this display implementation for Heltec boards
-#if defined(BOARD_HELTEC_V2) || defined(BOARD_HELTEC_V3) || defined(BOARD_XIAO_S3)
+#if defined(BOARD_HELTEC_V2) || defined(BOARD_HELTEC_V3) || defined(BOARD_XIAO_S3) || defined(BOARD_XIAO_S3_ADS1220)
 
 #include <Arduino.h>
 
@@ -7,7 +7,10 @@
 #include "pins.h"
 #include "U8g2lib.h" //library for OLED
 
+#include <Wire.h>
+
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C   u8g2(U8G2_R2, OLED_RESET_PIN, OLED_CLOCK_PIN, OLED_DATA_PIN); //setup display connection
+
 
 //number: number to display
 //line: y position on screen to start drawing on
@@ -35,7 +38,9 @@ void displayMaxForce(long force) {
 
 void displayInit(){
   u8g2.setBusClock(1000000);
-  u8g2.begin();
+  if (!u8g2.begin()){
+    Serial.println("Display failed");
+  }
   u8g2.setPowerSave(0);
   u8g2.setFont(u8g2_font_inb21_mf);
   u8g2.setFontPosTop();
