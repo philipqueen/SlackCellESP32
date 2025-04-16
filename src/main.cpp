@@ -75,7 +75,7 @@ const float LOADCELL_DIVIDER_lb = LOADCELL_DIVIDER_N * 4.448;
 TaskHandle_t DisplayTask;
 TaskHandle_t appendMeasurementTask;
 TaskHandle_t getMeasurementTask;
-QueueHandle_t queue;
+QueueHandle_t displayQueue;
 QueueHandle_t sdQueue;
 
 File dataFile;
@@ -147,12 +147,12 @@ void setup() {
   pinMode(ADS1220_DRDY_PIN, INPUT);
   loadcell.setLowSidePowerSwitch(ADS1220_SWITCH);  
   loadcell.setFIRFilter(ADS1220_50HZ_60HZ);
-  setSampleRate(false,6);
+  setSampleRate(false,6); // 1 kHz
 
-  queue = xQueueCreate(2, sizeof(long));
+  displayQueue = xQueueCreate(1, sizeof(long));
 
-  if(queue == NULL){
-    Serial.println("Error creating the queue");
+  if(!displayQueue){
+    Serial.println("Error creating the display queue");
   }
 
   sdQueue = xQueueCreate(128, sizeof(LogEntry)); 
@@ -231,7 +231,7 @@ void init_sd(){
   else {
     Serial.println("File already exists");
   }
-  appendFile(SD, CSV_NAME, CSV_HEADER); // We always append the header to demarcate different sessions
+  //appendFile(SD, CSV_NAME, CSV_HEADER); // We always append the header to demarcate different sessions
   file.close();
 
   sd_ready = true;
@@ -250,7 +250,7 @@ void Display(void * parameter) {
   TickType_t lastWakeTime = xTaskGetTickCount();
 
   for(;;){
-    xQueueReceive(queue, &force, portMAX_DELAY);
+    xQueueReceive(displayQueue, &force, portMAX_DELAY);
     Serial.println(force);
     if (force != prevForce) {
       prevForce = force;
@@ -281,6 +281,29 @@ void getMeasurement(void * parameter){
     Serial.print("Force: ");
     Serial.println(force2);
 
+    // only push data into queue (which has size of 1) when it has been emptied by the display task. keep a running average 
+    static float avgForceAccumulator = 0;
+    static int avgForceCount = 0;
+
+    if (uxQueueMessagesWaiting(displayQueue) == 0) {
+        float forceToSend;
+
+      if (avgForceCount > 0) {
+        forceToSend = avgForceAccumulator / avgForceCount;
+        avgForceAccumulator = 0;
+        avgForceCount = 0;
+      } else {
+        forceToSend = force2;
+      }
+
+      long forceLong = long(forceToSend);
+     xQueueSend(displayQueue, &forceLong, 0);
+    } else {
+      // Display hasn't pulled the last value yet — accumulate running average
+      avgForceAccumulator += force2;
+      avgForceCount++;
+    }
+
     if (sd_ready && recording){
     if (xQueueSend(sdQueue, &entry, 0) != pdTRUE) {
       // Queue full — remove oldest
@@ -306,7 +329,7 @@ void getMeasurement(void * parameter){
     }
     }
   }
-    vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(dataDelayMs));  // 1 kHz
+    vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(dataDelayMs)); 
 
   }
 }
