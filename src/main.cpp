@@ -44,6 +44,8 @@ void appendMeasurement(void * parameter);
 void Display(void * parameter);
 void getMeasurement(void * parameter);
 void setSampleRate(bool turbo, uint8_t rateLevel);
+void startRecording();
+void stopRecording();
 
 #ifdef USE_VEXT
 void VextON(void);
@@ -172,13 +174,18 @@ void setup() {
 
 
     if (sd_ready){
-  xTaskCreatePinnedToCore(
+    xTaskCreatePinnedToCore(
     appendMeasurement, "appendMeasurementTask", 
     8192, 
     NULL, 
     10, 
     &appendMeasurementTask, 
     0);
+    }
+
+    // Suspend the task if recording is false
+    if (!recording) {
+      vTaskSuspend(appendMeasurementTask);
     }
   
     xTaskCreatePinnedToCore(
@@ -269,13 +276,16 @@ void getMeasurement(void * parameter){
 
   for (;;) {
 
-    int reps = (currentSPS > 1000) ? 2 : 1;
+    int reps = (currentSPS > 1000) ? 2 : 1; //minimum waituntil is 1ms, so run twice when sps >1000
     for (int i = 0; i < reps; i++) {
-    long raw2 = loadcell.getRawData();
+    reading= loadcell.getRawData();
+    long raw2 = reading;
     float force2 = (raw2 - LOADCELL_OFFSET) / LOADCELL_DIVIDER_N;
     // i made these local to the function and in float because i was getting weird logs of 0.0 / nan and didn't know why
     timeNow = micros();
     maxForce = max(long(force2), maxForce); 
+
+
 
     LogEntry entry = { readingID++, timeNow, force2};
     Serial.print("Force: ");
@@ -346,25 +356,58 @@ void appendMeasurement(void * parameter) {
     return;
   }
 
-  while (true) {
-    if (xQueueReceive(sdQueue, &batch[count], portMAX_DELAY)) {
-      count++;
-      if (count >= SD_BATCH_SIZE) {  
-        // going to need to handle when recording goes FALSE because the data left won't hit SD_BATCH_SIZE
-        // also pause this task when it isn't needed
-        dataFile.write((uint8_t*)batch, sizeof(batch));
-        count = 0;
-        flushCounter++;
+  for (;;) {
+    if (recording) {
+      // Normal operation: process entries from the queue
+      if (xQueueReceive(sdQueue, &batch[count], portMAX_DELAY)) {
+        count++;
+        if (count >= SD_BATCH_SIZE) {
+          dataFile.write((uint8_t*)batch, sizeof(batch));
+          count = 0;
+          flushCounter++;
 
-        if (flushCounter >= 4) {  // flush every 4 batches
-          dataFile.flush();
-          flushCounter = 0;
+          if (flushCounter >= 4) {  // Flush every 4 batches
+            dataFile.flush();
+            flushCounter = 0;
+          }
         }
       }
+    } else {
+      // Handle stopping recording
+      Serial.println("Stopping recording: flushing remaining data...");
+
+      // Write any remaining entries in the batch
+      if (count > 0) {
+        dataFile.write((uint8_t*)batch, count * sizeof(LogEntry));
+        count = 0;
+      }
+
+      // Drain the queue and write remaining entries
+      while (uxQueueMessagesWaiting(sdQueue) > 0) {
+        if (xQueueReceive(sdQueue, &batch[count], 0)) {
+          count++;
+          if (count >= SD_BATCH_SIZE) {
+            dataFile.write((uint8_t*)batch, sizeof(batch));
+            count = 0;
+          }
+        }
+      }
+
+      // Write any remaining entries in the batch after draining the queue
+      if (count > 0) {
+        dataFile.write((uint8_t*)batch, count * sizeof(LogEntry));
+      }
+
+      // Flush and close the file
+      dataFile.flush();
+      dataFile.close();
+      Serial.println("Recording stopped: file closed.");
+
+      // Suspend the task until recording is restarted
+      vTaskSuspend(NULL);
     }
   }
 }
-
 
 
 // Write to the SD card (DON'T MODIFY THIS FUNCTION)
@@ -405,7 +448,7 @@ void setSampleRate(bool turbo, uint8_t rateLevel) {
   loadcell.setDataRate(rateMap[rateLevel]);
 
   currentSPS = spsTable[turbo ? 1 : 0][rateLevel];
-  dataDelayMs = (1000 + currentSPS - 1) / currentSPS;  // round up
+  dataDelayMs = (1000 + currentSPS - 1) / currentSPS;  // round up. 660 or 600 ends up being 500sps
 }
 
 // Append data to the SD card (DON'T MODIFY THIS FUNCTION)
@@ -423,6 +466,23 @@ void appendFile(fs::FS &fs, const char * path, const char * message) {
     Serial.println("Append failed");
   }
   file.close();
+}
+
+void startRecording(){
+ Serial.println("Starting recording...");
+  if (!recording) {
+    recording = true;
+    if (sd_ready){
+     vTaskResume(appendMeasurementTask);
+    }
+  }
+}
+
+void stopRecording(){
+  Serial.println("Stopping recording...");
+  if (recording) {
+    recording = false;
+  }
 }
 
 #ifdef USE_BUTTON
