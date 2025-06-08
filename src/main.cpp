@@ -19,6 +19,10 @@ Tested with and recommended for Heltec WifiKit32 V2 or V3 controller
 #include "display.h"
 #include "power.h"
 
+#if defined(USE_RESET_BUTTON) || defined(USE_INFO_BUTTON)
+#include "OneButton.h"
+#endif
+
 #define CSV_NAME "/slackcell.txt" // TODO: not sure if these should live in another file
 #define CSV_HEADER "Reading ID, Time (ms), Force (N) \r\n"
 #define SD_MESSAGE_LENGTH 60
@@ -34,15 +38,22 @@ void writeFile(fs::FS &fs, const char * path, const char * message);
 void appendFile(fs::FS &fs, const char * path, const char * message);
 void Display(void * parameter);
 
+long info_print_time;
+
 #ifdef USE_VSPI
 SPIClass spiVspi(VSPI);
 #endif
 
-#ifdef USE_BUTTON
-#include "OneButton.h"
-OneButton display_active_btn(BUTTON_PIN, true);
+#ifdef USE_RESET_BUTTON
+OneButton display_active_btn(RESET_BUTTON_PIN, true);
 void toggleSwitchState();
 void resetMaxForce();
+#endif
+
+#ifdef USE_INFO_BUTTON
+OneButton info_btn(INFO_BUTTON_PIN, true);
+void emitInfo();
+bool print_info = false; //get's set from the button callback above
 #endif
 
 const long baud = 115200;
@@ -89,10 +100,14 @@ void setup() {
   // Setting up the Switch
   pinMode(SWITCH_PIN, SWITCH_MODE);
 #endif
-#ifdef USE_BUTTON
+#ifdef USE_RESET_BUTTON
   // Setting up the Button
   display_active_btn.attachClick(toggleSwitchState);
   display_active_btn.attachLongPressStart(resetMaxForce);
+#endif
+
+#ifdef USE_INFO_BUTTON
+  info_btn.attachClick(emitInfo);
 #endif
 
   displayInit();
@@ -182,8 +197,12 @@ void init_sd(){
 void loop() {
   #ifdef USE_SWITCH
       Switch_state = (digitalRead(SWITCH_PIN) == HIGH);
-  #elif defined(USE_BUTTON)
+  #elif defined(USE_RESET_BUTTON)
       display_active_btn.tick();
+  #endif
+
+  #ifdef USE_INFO_BUTTON
+      info_btn.tick();
   #endif
 
   if (loadcell.is_ready()) {
@@ -223,8 +242,19 @@ void loop() {
 
 void Display(void * parameter) {
   for(;;){
+
+#ifdef USE_INFO_BUTTON
+    if(print_info){
+      print_info = false;
+      displayInfo(readBatLevel());
+      delay(2000); //this delay only hangs up the thread for the display and not the main code, so it's ok here
+      //retrigger force display
+      prevForce = LONG_MIN;
+      prevMaxForce = LONG_MIN;
+    }
+#endif
+
     xQueueReceive(queue, &force, portMAX_DELAY);
-    Serial.println(force);
     if (force != prevForce) {
       prevForce = force;
       displayForce(force);
@@ -235,6 +265,12 @@ void Display(void * parameter) {
     }
   }
 }
+
+#ifdef USE_INFO_BUTTON
+void emitInfo(){
+  print_info = true; //the real displaying will be started from the display task to avoid display artifacts resulting from to threads accessing the display
+}
+#endif
 
 void writeSD(int readingID, long timeNow, long force) {
   sdMessage = "";
@@ -281,7 +317,7 @@ void appendFile(fs::FS &fs, const char * path, const char * message) {
   file.close();
 }
 
-#ifdef USE_BUTTON
+#ifdef USE_RESET_BUTTON
 void toggleSwitchState(){
   Switch_state = !Switch_state;
 }

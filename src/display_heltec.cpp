@@ -51,6 +51,26 @@ void displayInit(){
   initialized = true;
 }
 
+void displayBatteryLow(){
+  u8g2.clearBuffer();
+  //switching to smaller font, to fit the entire message
+  u8g2.setFont(u8g2_font_lubR19_tf);
+  u8g2.setFontPosTop();
+  u8g2.drawStr(0, 0, "Battery");
+  u8g2.drawStr(0, 36, "too low!");
+  u8g2.sendBuffer();
+  //not resetting font to default, because MCU will sleep, and therefore reset before the next display action anyways
+}
+
+void displayInfo(float batteryVoltage){
+  char buffer[7];
+  snprintf(buffer, 7, "%.2f V", batteryVoltage);
+  displayClearBuffer();
+  u8g2.drawStr(0, 0, buffer);
+
+  u8g2.sendBuffer();
+}
+
 void displayClearBuffer(){
   u8g2.clearBuffer();
 }
