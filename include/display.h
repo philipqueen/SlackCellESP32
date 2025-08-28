@@ -10,6 +10,10 @@ void displayForce(long force);
 void displayMaxForce(long force);
 void displayInit();
 void displayClearBuffer();
+void displaySleep();
+void displayWakeup();
+void displayInfo(float batteryVoltage);
+void displayBatteryLow();
 
 
 #endif //DISPLAY_SEEN
