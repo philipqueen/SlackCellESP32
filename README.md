@@ -62,22 +62,34 @@ Because two of the parts come in bulk, a group of three friends could each build
 ### Parts list:
 Links to parts list are NOT affiliate links. Sourcing of the PCB will be added once PCB development reaches a more stable place.
 
-1. Microcontroller: [Buy HiLetgo ESP32 LCD WiFi Kit on Amazon](https://www.amazon.com/dp/B07X1W16QS/)
+**Note**
+The here mentionend PCB is outdated and only works for the Heltec V2 (not the V3)
+But the connections can be made nicely on one of [these boards](https://www.ebay.de/itm/185050188169?_skw=lochrasterplatine&itmmeta=01K00B5WX5TKSS6RXQW55XG4WB&hash=item2b15d9c989:g:IGIAAOSwbYZiamcn). Its possible to squeeze it on a 50x70mm board
 
-This is a specific version of the TTGO T-Display. Other versions of the same board should work, but haven't been tested.
+1. Microcontroller: 
+    - USA: [Buy HiLetgo ESP32 LCD WiFi Kit on Amazon](https://www.amazon.com/dp/B07X1W16QS/)
+      This is a specific version of the TTGO T-Display. Other versions of the same board should work, but haven't been tested.
+    - DE/EU: [Buy Heltec V3 on Ebay](https://www.ebay.de/itm/174942289832)
+      Its another microcontroller, than above. The software supports both, and this one is better for battery powered application
 
-2. Load Cell: [Buy Load Cell on Amazon](https://www.amazon.com/Portable-High-Precision-Pressure-Tension-Weighing/dp/B077YHFCX4/)
+2. Load Cell:
+    - USA: [Buy PSD-S1 Load Cell on Amazon](https://www.amazon.com/Portable-High-Precision-Pressure-Tension-Weighing/dp/B077YHFCX4/)
+    - DE/EU: [Buy PSD-S1 Loadcell on Amazon](https://www.amazon.de/Baxnore-PSD-wasserfestes-Ma%C3%9Fstabsensor-elektronische/dp/B0F2FWSL24&tag=amzfinder-20?th=1) not verified, original seller not available anymore, but seems to be the same part
 
 For slackline purposes, an S Beam load cell rated to 2000 kg is recommended. Always back up the load cell with a stronger component, and do not exceed its rated force. Amazon sourcing of these is sporadic, please file an issue if the link above is incorrect.
 
-3. HX711 Loadcell Amplifier: [Buy Comimark HX711 on Amazon]((https://www.amazon.com/dp/B07X2JZRKB)
+3. HX711 Loadcell Amplifier:
+  - USA: [Buy Comimark HX711 on Amazon](https://www.amazon.com/dp/B07X2JZRKB)
+        This comes in a pack of 4. Buying this version ensures the amplifier fits properly into the PCB, other HX711s may not fit in the PCB.
+  - DE/EU: [Buy Hx711 on Ebay](https://www.ebay.de/itm/174942018664)
 
-This comes in a pack of 4. Buying this version ensures the amplifier fits properly into the PCB, other HX711s may not fit in the PCB.
+5. MicroSD Card Reader: 
+    - USA: [Buy HiLetGo MicroSD card reader on Amazon](https://www.amazon.com/HiLetgo-Adater-Interface-Conversion-Arduino/dp/B07BJ2P6X6/)
+        This comes in a pack of 5. Buying from HiLetGo ensures the card reader fits properly into the PCB, other card readers may not fit in the PCB.
+    - DE/EU: [Buy MicroSD card reader on Ebay](https://www.ebay.de/itm/174940391637)
 
-4. MicroSD Card Reader: [Buy HiLetGo MicroSD card reader on Amazon](https://www.amazon.com/HiLetgo-Adater-Interface-Conversion-Arduino/dp/B07BJ2P6X6/)
-
-This comes in a pack of 5. Buying from HiLetGo ensures the card reader fits properly into the PCB, other card readers may not fit in the PCB.
-
-5. M16 Eye Bolts: [Buy M16 Eye Bolts on Amazon](https://www.amazon.com/gp/product/B07G1TND28/)
+6. M16 Eye Bolts:
+    - USA: [Buy M16 Eye Bolts on Amazon](https://www.amazon.com/gp/product/B07G1TND28/)
+    - EU/DE: [Buy M16 Eye Bolts on Ebay](https://www.ebay.de/itm/292368070350)
 
 Any M16 bolts should fit, but a short bolt length is desired so they can be threaded all the way onto the load cell. The included lock washers should be used between the bolt and the load cell. 
