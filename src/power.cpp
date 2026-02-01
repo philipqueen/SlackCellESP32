@@ -6,6 +6,7 @@
 #include "driver/rtc_io.h"
 #include "display.h"
 #include "power.h"
+#include "user_config.h"
 
 
 //in minutes
@@ -13,7 +14,6 @@ const int STANDBY_TIME = 5;
 //in newtons
 const int STANDBY_UNDER_FORCE = 15;
 
-#ifdef USE_SLEEP
 const unsigned long MIN_POWER_BUTTON_DURATION_FOR_WAKEUP = 1500;
 const unsigned long MIN_POWER_BUTTON_DURATION_FOR_SHUTDOWN = 2000;
 
@@ -22,11 +22,11 @@ const float MIN_OPERATING_BAT_VOL = 3.3; //In V, MCU will shut down if battery v
 const float CRITICAL_BAT_VOL = 3.1; //Do nothing if the voltage drops below this, not even display the warning about low battery
 const unsigned long BATTERY_READOUT_INTERVAL = 1000;
 #endif //HAS_BATTERY_READOUT
-#endif //SLEEP
 
 long lastTimeOverStandbyLimit = 0;
 bool wakingUp = false; //set by power button callback (wakeUp)
 
+uint8_t batteryPercent;
 float batteryVoltage;
 
 //could be controlled later by the user
@@ -54,14 +54,16 @@ void VextOFF(void);
 /// It will also refuse to boot if the battery volage is too low.
 void maybeWakeUp(){
 #ifdef USE_SLEEP
+
+#ifdef HAS_BATTERY_READOUT
+  if(readBatLevel() < CRITICAL_BAT_VOL){
+    //if the battery is really low, go back to sleep directly, without using any more energy on awaiting a long button press or turning on the display
+    goToSleep();
+  }
+#endif
+
   if(esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0){
     //A press of the power button woke up the mcu.
-#ifdef HAS_BATTERY_READOUT
-    if(readBatLevel() < CRITICAL_BAT_VOL){
-      //if the battery is really low, go back to sleep directly, without using any more energy on awaiting a long button press or turning on the display
-      goToSleep();
-    }
-#endif
     //To be sure the user really wants to turn the SlackCell on, a long press of the power button is expected
     power_btn.attachLongPressStart(wakeUp);
     power_btn.setPressMs(MIN_POWER_BUTTON_DURATION_FOR_WAKEUP);
@@ -88,7 +90,7 @@ void maybeWakeUp(){
     goToSleep();
   }
   //on other wakeup reasons always wake up
-#endif
+#endif //USE_SLEEP
 }
 
 void powerInit(){
@@ -123,6 +125,10 @@ void powerTick(long reading){
         delay(1500);
         goToSleep();
       }
+
+      //batteryPercent is changed after the check for sufficient battery voltage to avoid the battery icon displaying on top of the "battery too low" warning.
+      //using a precalculated lookup table to convert voltage into approximate percent, is non linear
+      batteryPercent = battery_percent_lut[constrain(int(round(batteryVoltage*100)), min_lut_voltage, max_lut_voltage) - min_lut_voltage];
     }
 #endif //HAS_BATTERY_READOUT
     

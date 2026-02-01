@@ -43,7 +43,6 @@ void writeFile(fs::FS &fs, const char * path, const char * message);
 void appendFile(fs::FS &fs, const char * path, const char * message);
 void Display(void * parameter);
 
-long info_print_time;
 
 #ifdef USE_VSPI
 SPIClass spiVspi(VSPI);
@@ -77,8 +76,6 @@ long maxForce = 0;
 long force = -1;
 long reading = -1;
 long avg_reading = 0;
-long prevForce = -100;
-long prevMaxForce = -100;
 
 // TODO: should be selectable with buttons, maybe a small menu?
 bool recording = true;
@@ -246,16 +243,28 @@ void loop() {
 }
 
 void Display(void * parameter) {
+  static long prevForce = LONG_MIN;
+  static long prevMaxForce = LONG_MIN;
+  static uint8_t prevBatteryPercent = 0;
   for(;;){
 
 #ifdef USE_INFO_BUTTON
     if(print_info){
-      displayInfo(batteryVoltage);
+      displayInfo(batteryVoltage, batteryPercent);
       delay(2000); //this delay only hangs up the thread for the display and not the main code, so it's ok here
+      displayClearBuffer();
       //retrigger force display
       prevForce = LONG_MIN;
       prevMaxForce = LONG_MIN;
+      prevBatteryPercent = UINT8_MAX;
       print_info = false;
+    }
+#endif
+
+#ifdef HAS_BATTERY_READOUT
+    if(batteryPercent != prevBatteryPercent){
+      prevBatteryPercent = batteryPercent;
+      displayBatteryIcon(batteryPercent);
     }
 #endif
 

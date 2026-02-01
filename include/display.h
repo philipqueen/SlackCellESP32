@@ -12,8 +12,9 @@ void displayInit();
 void displayClearBuffer();
 void displaySleep();
 void displayWakeup();
-void displayInfo(float batteryVoltage);
+void displayInfo(float batteryVoltage, uint8_t batteryPercent);
 void displayBatteryLow();
+void displayBatteryIcon(int percent);
 
 
 #endif //DISPLAY_SEEN
