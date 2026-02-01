@@ -245,12 +245,12 @@ void Display(void * parameter) {
 
 #ifdef USE_INFO_BUTTON
     if(print_info){
-      print_info = false;
       displayInfo(readBatLevel());
       delay(2000); //this delay only hangs up the thread for the display and not the main code, so it's ok here
       //retrigger force display
       prevForce = LONG_MIN;
       prevMaxForce = LONG_MIN;
+      print_info = false;
     }
 #endif
 
