@@ -27,6 +27,8 @@ const unsigned long BATTERY_READOUT_INTERVAL = 1000;
 long lastTimeOverStandbyLimit = 0;
 bool wakingUp = false; //set by power button callback (wakeUp)
 
+float batteryVoltage;
+
 //could be controlled later by the user
 //if set from false to true, lastTimeOverStandbyLimit must be set before to millis() to prevent immediate standby
 bool automaticStandbyActive = true;
@@ -114,7 +116,9 @@ void powerTick(long reading){
 
     if(millis() - last_battery_readout_time > BATTERY_READOUT_INTERVAL){
       last_battery_readout_time = timeNow;
-      if(readBatLevel() < MIN_OPERATING_BAT_VOL){
+      batteryVoltage = readBatLevel();
+
+      if(batteryVoltage < MIN_OPERATING_BAT_VOL){
         displayBatteryLow();
         delay(1500);
         goToSleep();

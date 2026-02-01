@@ -18,6 +18,8 @@ void powerTick(long reading);
 
 #ifdef HAS_BATTERY_READOUT
 float readBatLevel();
+
+extern float batteryVoltage;
 #endif //HAS_BATTERY_READOUT
 
 #endif //POWER_SEEN

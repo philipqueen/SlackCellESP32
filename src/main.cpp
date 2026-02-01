@@ -23,10 +23,15 @@ Tested with and recommended for Heltec WifiKit32 V2 or V3 controller
 #include "OneButton.h"
 #endif
 
-#define CSV_NAME "/slackcell.txt" // TODO: not sure if these should live in another file
-#define CSV_HEADER "Reading ID, Time (ms), Force (N) \r\n"
-#define SD_MESSAGE_LENGTH 60
-#define SD_START_DELAY 2000
+const char *CSV_NAME = "/slackcell.txt"; // TODO: not sure if these should live in another file
+const char *CSV_HEADER = 
+  "Reading ID, Time (ms),"
+#ifdef RECORD_BATTERY_VOLTAGE
+  " Battery Voltage (V),"
+#endif
+  " Force (N) \r\n";
+const unsigned int SD_MESSAGE_LENGTH  = 60;
+const uint32_t SD_START_DELAY = 2000;
 
 #define TARE_AVERAGE_TIME 30
 #define MAX_TARE_VALUE 30
@@ -245,7 +250,7 @@ void Display(void * parameter) {
 
 #ifdef USE_INFO_BUTTON
     if(print_info){
-      displayInfo(readBatLevel());
+      displayInfo(batteryVoltage);
       delay(2000); //this delay only hangs up the thread for the display and not the main code, so it's ok here
       //retrigger force display
       prevForce = LONG_MIN;
@@ -278,6 +283,10 @@ void writeSD(int readingID, long timeNow, long force) {
   sdMessage += ",";
   sdMessage += timeNow;
   sdMessage += ",";
+#ifdef RECORD_BATTERY_VOLTAGE
+  sdMessage += batteryVoltage; //TODO: if this stays, pass it through a parameter in the function
+  sdMessage += ",";
+#endif
   sdMessage += force;
   sdMessage += "\n";
   appendFile(SD, CSV_NAME, sdMessage.c_str());

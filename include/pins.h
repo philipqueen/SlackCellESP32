@@ -2,13 +2,18 @@
 This file contains the pin definitions for the different supported boards. 
 
 BOARD_xxxx: This define is set by the PLATFORM IO build system, look in platformio.ini under build-flags of your board.
+
+Following Macros feature flags are supported. If they are indented, they are dependent on the flag one level higher
+
 USE_VEXT: if defined, enables usage of switchable external voltage. Only enable if support on your specific board
     Using this supply for connected devices, like HX711 and SD card will reduce power consumption in deep sleep.
     If the used dev board does not support switching external power, this functionality can be achieved by adding a mosfet circuit and defining the variable "Vext" to the pin of the mosfet controlling the external power.
-HAS_BATTERY_READOUT: define if your board/circuit does support reading out the battery voltage
+USE_SLEEP: if defined, allows to put the SlackCell into deep sleep with a power button and/or automatically with standby mode
+    HAS_BATTERY_READOUT: define if your board/circuit does support reading out the battery voltage, only useful, when USE_SLEEP is enabled
+        RECORD_BATTERY_VOLTAGE: if defined, enables exporting the battery voltage into the csv recording
+        USE_INFO_BUTTON: if defined, enables showing battery information on press of a button, depending on HAS_BATTERY_READOUT
 USE_RESET_BUTTON: if defined, enables usage of a button to toggle display updates and reset peak force with a long press
 USE_SWITCH: if defined, enables usage of a switch to toggle display updates
-USE_INFO_BUTTON: if defined, enables showing battery information on press of a button, depending on HAS_BATTERY_READOUT
 USE_VSPI: if defined, enables usage of the VSPI bus for the SD card. This is required for some boards with SPI
     screen interfaces to prevent SPI conflicts with the SD card
 CUSTOM_SPI_PINS: if defined, enables usage of custom SPI pins for the screen. This is required for boards that do not 
@@ -68,11 +73,14 @@ const uint8_t INFO_BUTTON_PIN = 3;
 const gpio_num_t POWER_BUTTON_PIN = GPIO_NUM_2;
 
 #define HAS_BATTERY_READOUT
+#ifdef HAS_BATTERY_READOUT
+#define RECORD_BATTERY_VOLTAGE
 //Schematic for the Heltec V3, relevant is the bottom left section: https://resource.heltec.cn/download/WiFi_Kit_32_V3/HTIT-WB32_V3_Schematic_Diagram.pdf
 const uint8_t VBAT_ADC_PIN  = 1;
 const uint8_t VBAT_READ_CONTROL_PIN = 37; // Heltec V3 GPIO to toggle VBatt read connection, this pin enables disabling the voltage divider connecting the battery voltage and therefore conserving power, especially important in sleep mode
 const adc_attenuation_t VBAT_ADC_ATTENUATION = ADC_2_5db; //For the Heltec V3 this limits the measuring range to 1.05V which is enough, after the battery voltage passed through the voltage divider, see: https://docs.espressif.com/projects/arduino-esp32/en/latest/api/adc.html#analogsetattenuation
 const float VBAT_CONVERSION_FACTOR = 0.001f / (100.0f / (100.0f + 390.0f)); //0.001 converts from mV to V, the other values come from the builtin voltage divider, which has the resistors R1 = 390kOhm and R2 = 100kOhm
+#endif
 
 #define USE_VEXT
 #define READING_AVG_TIMES 7
