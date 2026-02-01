@@ -107,8 +107,16 @@ const uint8_t RESET_BUTTON_PIN = 0;
 #endif //BOARD_TTGO_DISPLAY
 
 //Checks
+#if defined(HAS_BATTERY_READOUT) && !defined(USE_SLEEP)
+#error "Battery readout feature only works when USE_SLEEP is activated!"
+#endif
+
 #if defined(USE_INFO_BUTTON) && !defined(HAS_BATTERY_READOUT)
 #error "Info feature only works when battery readout is supported!"
+#endif
+
+#if defined(RECORD_BATTERY_VOLTAGE) && !defined(HAS_BATTERY_READOUT)
+#error "Record Battery voltage feature only works when battery readout is supported!"
 #endif
 
 #endif //PINS_SEEN
