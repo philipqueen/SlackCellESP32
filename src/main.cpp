@@ -16,6 +16,7 @@ Tested with and recommended for Heltec WifiKit32 V2 or V3 controller
 #include "SD.h"
 
 #include "pins.h"
+#include "user_config.h"
 #include "display.h"
 #include "power.h"
 
@@ -62,8 +63,6 @@ bool print_info = false; //get's set from the button callback above
 
 const long baud = 115200;
 
-const long LOADCELL_OFFSET = 2330;
-const float LOADCELL_DIVIDER_N = -232;
 const float LOADCELL_DIVIDER_kg = LOADCELL_DIVIDER_N * 9.81;
 const float LOADCELL_DIVIDER_lb = LOADCELL_DIVIDER_N * 4.448;
 

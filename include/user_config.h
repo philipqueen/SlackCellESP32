@@ -18,6 +18,10 @@ git stash pop #Now resolve any potential merge conflicts
 
 #include "Arduino.h"
 
+//These values must be calibrated for every loadcell to obtain any useful force reading
+const long LOADCELL_OFFSET = 2330;
+const float LOADCELL_DIVIDER_N = -232;
+
 #ifdef HAS_BATTERY_READOUT
 //These values should be calibrated for every different battery to obtain accurate battery percentage. 
 //Battery percentage is not proportional to battery voltage. The following look up table (LUT) maps voltage to percentage, based upon measurements of the battery draining.
