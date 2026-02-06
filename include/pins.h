@@ -78,8 +78,8 @@ const gpio_num_t POWER_BUTTON_PIN = GPIO_NUM_2;
 //Schematic for the Heltec V3, relevant is the bottom left section: https://resource.heltec.cn/download/WiFi_Kit_32_V3/HTIT-WB32_V3_Schematic_Diagram.pdf
 const uint8_t VBAT_ADC_PIN  = 1;
 const uint8_t VBAT_READ_CONTROL_PIN = 37; // Heltec V3 GPIO to toggle VBatt read connection, this pin enables disabling the voltage divider connecting the battery voltage and therefore conserving power, especially important in sleep mode
-const adc_attenuation_t VBAT_ADC_ATTENUATION = ADC_2_5db; //For the Heltec V3 this limits the measuring range to 1.05V which is enough, after the battery voltage passed through the voltage divider, see: https://docs.espressif.com/projects/arduino-esp32/en/latest/api/adc.html#analogsetattenuation
-const float VBAT_CONVERSION_FACTOR = 0.001f / (100.0f / (100.0f + 390.0f)); //0.001 converts from mV to V, the other values come from the builtin voltage divider, which has the resistors R1 = 390kOhm and R2 = 100kOhm
+const adc_attenuation_t VBAT_ADC_ATTENUATION = ADC_0db; //For the Heltec V3 this limits the measuring range to 950mV which is enough, after the battery voltage passed through the voltage divider, see: https://docs.espressif.com/projects/arduino-esp32/en/latest/api/adc.html#analogsetattenuation
+const float VBAT_CONVERSION_FACTOR = (0.001f / (100.0f / (100.0f + 390.0f))); //0.001 converts from mV to V, the other values come from the builtin voltage divider, which has the resistors R1 = 390kOhm and R2 = 100kOhm
 #endif
 
 #define USE_VEXT

@@ -20,7 +20,8 @@ const unsigned long MIN_POWER_BUTTON_DURATION_FOR_SHUTDOWN = 2000;
 #ifdef HAS_BATTERY_READOUT
 const float MIN_OPERATING_BAT_VOL = 3.3; //In V, MCU will shut down if battery voltage drops below this value
 const float CRITICAL_BAT_VOL = 3.1; //Do nothing if the voltage drops below this, not even display the warning about low battery
-const unsigned long BATTERY_READOUT_INTERVAL = 1000;
+const unsigned long BATTERY_READOUT_INTERVAL = 3000;
+static const uint8_t BATTERY_READING_AVG_TIMES = 200;
 #endif //HAS_BATTERY_READOUT
 
 long lastTimeOverStandbyLimit = 0;
@@ -36,6 +37,7 @@ bool automaticStandbyActive = true;
 OneButton power_btn(POWER_BUTTON_PIN, true);
 
 void goToSleep();
+void batteryReadoutInit();
 
 void wakeUp(){
   wakingUp = true;
@@ -94,16 +96,19 @@ void maybeWakeUp(){
 }
 
 void powerInit(){
-    maybeWakeUp();
+#ifdef HAS_BATTERY_READOUT
+  batteryReadoutInit();
+#endif
+  maybeWakeUp();
 
 #ifdef USE_VEXT
-    //turn on external devices
-    VextON();
+  //turn on external devices
+  VextON();
 #endif //USE_VEXT
 
 #ifdef USE_SLEEP
-    power_btn.attachLongPressStart(goToSleep);
-    power_btn.setPressMs(MIN_POWER_BUTTON_DURATION_FOR_SHUTDOWN);
+  power_btn.attachLongPressStart(goToSleep);
+  power_btn.setPressMs(MIN_POWER_BUTTON_DURATION_FOR_SHUTDOWN);
 #endif
 }
 
@@ -115,20 +120,31 @@ void powerTick(long reading){
 
 #ifdef HAS_BATTERY_READOUT
     static unsigned long last_battery_readout_time;
+    static uint8_t battery_reading_id = 0;
+    static float battery_voltage_sum = 0;
 
-    if(millis() - last_battery_readout_time > BATTERY_READOUT_INTERVAL){
+    if(timeNow - last_battery_readout_time > BATTERY_READOUT_INTERVAL / BATTERY_READING_AVG_TIMES){
       last_battery_readout_time = timeNow;
-      batteryVoltage = readBatLevel();
 
-      if(batteryVoltage < MIN_OPERATING_BAT_VOL){
-        displayBatteryLow();
-        delay(1500);
-        goToSleep();
+      battery_voltage_sum += readBatLevel();
+      //cycle battery_reading_id from 0 to BATTERY_READING_AVG_TIMES - 1
+      battery_reading_id = ++battery_reading_id % BATTERY_READING_AVG_TIMES;
+
+      //update batteryVoltage only when enough values are collected
+      if(battery_reading_id == 0){
+        batteryVoltage = battery_voltage_sum / BATTERY_READING_AVG_TIMES;
+        battery_voltage_sum = 0;
+
+        if(batteryVoltage < MIN_OPERATING_BAT_VOL){
+          displayBatteryLow();
+          delay(1500);
+          goToSleep();
+        }
+
+        //batteryPercent is changed after the check for sufficient battery voltage to avoid the battery icon displaying on top of the "battery too low" warning.
+        //using a precalculated lookup table to convert voltage into approximate percent, is non linear
+        batteryPercent = battery_percent_lut[constrain(int(round(batteryVoltage*100)), min_lut_voltage, max_lut_voltage) - min_lut_voltage];
       }
-
-      //batteryPercent is changed after the check for sufficient battery voltage to avoid the battery icon displaying on top of the "battery too low" warning.
-      //using a precalculated lookup table to convert voltage into approximate percent, is non linear
-      batteryPercent = battery_percent_lut[constrain(int(round(batteryVoltage*100)), min_lut_voltage, max_lut_voltage) - min_lut_voltage];
     }
 #endif //HAS_BATTERY_READOUT
     
@@ -171,22 +187,23 @@ void goToSleep(){
 
   esp_deep_sleep_start();
 }
-#endif //USE_SLEEP
 
 #ifdef HAS_BATTERY_READOUT
-//The Heltec V3 has a voltage divider connected to the battery, which needs to be activated with another GPIO pin.
-//Schematic for the Heltec V3, relevant is the bottom left section: https://resource.heltec.cn/download/WiFi_Kit_32_V3/HTIT-WB32_V3_Schematic_Diagram.pdf
-float readBatLevel() {
+void batteryReadoutInit(){
+  //control pin needed to active battery voltage readout
   pinMode(VBAT_READ_CONTROL_PIN, OUTPUT);
   digitalWrite(VBAT_READ_CONTROL_PIN, LOW);
   
   analogSetPinAttenuation(VBAT_ADC_PIN, VBAT_ADC_ATTENUATION);
-  float voltage = analogReadMilliVolts(VBAT_ADC_PIN) * VBAT_CONVERSION_FACTOR;
+}
 
-  pinMode(VBAT_READ_CONTROL_PIN, INPUT);
-  return voltage;
+//The Heltec V3 has a voltage divider connected to the battery, which needs to be activated with another GPIO pin.
+//Schematic for the Heltec V3, relevant is the bottom left section: https://resource.heltec.cn/download/WiFi_Kit_32_V3/HTIT-WB32_V3_Schematic_Diagram.pdf
+float readBatLevel() {
+  return analogReadMilliVolts(VBAT_ADC_PIN) * VBAT_CONVERSION_FACTOR * VBAT_CORRECTION_FACTOR;
 }
 #endif //HAS_BATTERY_READOUT
+#endif //USE_SLEEP
 
 
 #ifdef USE_VEXT

@@ -30,6 +30,10 @@ const float LOADCELL_DIVIDER_N = -232;
 const uint16_t min_lut_voltage = 330;
 const uint16_t max_lut_voltage = 434;
 const uint8_t battery_percent_lut [] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 57, 59, 61, 63, 64, 66, 67, 69, 70, 72, 73, 75, 76, 77, 79, 80, 81, 82, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 97, 98, 99, 100, 100, 100, 100, 100, 100, 100, 100};
+
+//If the reported battery voltage doesn't match what you read with a voltmeter, you can adjust it here.
+//If you change it, you'll need to redo the full battery drain and execute the analysis script again to calculate a new lut
+const float VBAT_CORRECTION_FACTOR = 1;
 #endif //HAS_BATTERY_READOUT
 
 #endif //USER_CONFIG_SEEN
