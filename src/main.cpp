@@ -16,12 +16,23 @@ Tested with and recommended for Heltec WifiKit32 V2 or V3 controller
 #include "SD.h"
 
 #include "pins.h"
+#include "user_config.h"
 #include "display.h"
+#include "power.h"
 
-#define CSV_NAME "/slackcell.txt" // TODO: not sure if these should live in another file
-#define CSV_HEADER "Reading ID, Time (ms), Force (N) \r\n"
-#define SD_MESSAGE_LENGTH 60
-#define SD_START_DELAY 2000
+#if defined(USE_RESET_BUTTON) || defined(USE_INFO_BUTTON)
+#include "OneButton.h"
+#endif
+
+const char *CSV_NAME = "/slackcell.txt"; // TODO: not sure if these should live in another file
+const char *CSV_HEADER = 
+  "Reading ID, Time (ms),"
+#ifdef RECORD_BATTERY_VOLTAGE
+  " Battery Voltage (V),"
+#endif
+  " Force (N) \r\n";
+const unsigned int SD_MESSAGE_LENGTH  = 60;
+const uint32_t SD_START_DELAY = 2000;
 
 #define TARE_AVERAGE_TIME 30
 #define MAX_TARE_VALUE 30
@@ -33,26 +44,25 @@ void writeFile(fs::FS &fs, const char * path, const char * message);
 void appendFile(fs::FS &fs, const char * path, const char * message);
 void Display(void * parameter);
 
-#ifdef USE_VEXT
-void VextON(void);
-void VextOFF(void);
-#endif
 
 #ifdef USE_VSPI
 SPIClass spiVspi(VSPI);
 #endif
 
-#ifdef USE_BUTTON
-#include "OneButton.h"
-OneButton display_active_btn(BUTTON_PIN, true);
+#ifdef USE_RESET_BUTTON
+OneButton display_active_btn(RESET_BUTTON_PIN, true);
 void toggleSwitchState();
 void resetMaxForce();
 #endif
 
+#ifdef USE_INFO_BUTTON
+OneButton info_btn(INFO_BUTTON_PIN, true);
+void emitInfo();
+bool print_info = false; //get's set from the button callback above
+#endif
+
 const long baud = 115200;
 
-const long LOADCELL_OFFSET = 2330;
-const float LOADCELL_DIVIDER_N = -232;
 const float LOADCELL_DIVIDER_kg = LOADCELL_DIVIDER_N * 9.81;
 const float LOADCELL_DIVIDER_lb = LOADCELL_DIVIDER_N * 4.448;
 
@@ -65,8 +75,6 @@ long maxForce = 0;
 long force = -1;
 long reading = -1;
 long avg_reading = 0;
-long prevForce = -100;
-long prevMaxForce = -100;
 
 // TODO: should be selectable with buttons, maybe a small menu?
 bool recording = true;
@@ -83,23 +91,24 @@ bool Switch_state = false;
 
 void setup() {
   Serial.begin(baud);
+  powerInit();
+
   Serial.println("Welcome to SlackCell!");
   Serial.print("Sketch:   ");   Serial.println(__FILE__);
   Serial.print("Uploaded: ");   Serial.println(__DATE__);
-
-#ifdef USE_VEXT
-  //turn on external devices
-  VextON();
-#endif //USE_VEXT
 
 #ifdef USE_SWITCH
   // Setting up the Switch
   pinMode(SWITCH_PIN, SWITCH_MODE);
 #endif
-#ifdef USE_BUTTON
+#ifdef USE_RESET_BUTTON
   // Setting up the Button
   display_active_btn.attachClick(toggleSwitchState);
   display_active_btn.attachLongPressStart(resetMaxForce);
+#endif
+
+#ifdef USE_INFO_BUTTON
+  info_btn.attachClick(emitInfo);
 #endif
 
   displayInit();
@@ -189,8 +198,12 @@ void init_sd(){
 void loop() {
   #ifdef USE_SWITCH
       Switch_state = (digitalRead(SWITCH_PIN) == HIGH);
-  #elif defined(USE_BUTTON)
+  #elif defined(USE_RESET_BUTTON)
       display_active_btn.tick();
+  #endif
+
+  #ifdef USE_INFO_BUTTON
+      info_btn.tick();
   #endif
 
   if (loadcell.is_ready()) {
@@ -220,15 +233,41 @@ void loop() {
     if(sd_ready && recording){
       writeSD(readingID, timeNow, reading);
     }
+
+    powerTick(reading);
+
     //increasing readingID outside of if, because it is also used when recording is off
     readingID++;
   }
 }
 
 void Display(void * parameter) {
+  static long prevForce = LONG_MIN;
+  static long prevMaxForce = LONG_MIN;
+  static uint8_t prevBatteryPercent = 0;
   for(;;){
+
+#ifdef USE_INFO_BUTTON
+    if(print_info){
+      displayInfo(batteryVoltage, batteryPercent);
+      delay(2000); //this delay only hangs up the thread for the display and not the main code, so it's ok here
+      displayClearBuffer();
+      //retrigger force display
+      prevForce = LONG_MIN;
+      prevMaxForce = LONG_MIN;
+      prevBatteryPercent = UINT8_MAX;
+      print_info = false;
+    }
+#endif
+
+#ifdef HAS_BATTERY_READOUT
+    if(batteryPercent != prevBatteryPercent){
+      prevBatteryPercent = batteryPercent;
+      displayBatteryIcon(batteryPercent);
+    }
+#endif
+
     xQueueReceive(queue, &force, portMAX_DELAY);
-    Serial.println(force);
     if (force != prevForce) {
       prevForce = force;
       displayForce(force);
@@ -240,12 +279,22 @@ void Display(void * parameter) {
   }
 }
 
+#ifdef USE_INFO_BUTTON
+void emitInfo(){
+  print_info = true; //the real displaying will be started from the display task to avoid display artifacts resulting from to threads accessing the display
+}
+#endif
+
 void writeSD(int readingID, long timeNow, long force) {
   sdMessage = "";
   sdMessage += readingID;
   sdMessage += ",";
   sdMessage += timeNow;
   sdMessage += ",";
+#ifdef RECORD_BATTERY_VOLTAGE
+  sdMessage += batteryVoltage; //TODO: if this stays, pass it through a parameter in the function
+  sdMessage += ",";
+#endif
   sdMessage += force;
   sdMessage += "\n";
   appendFile(SD, CSV_NAME, sdMessage.c_str());
@@ -285,7 +334,7 @@ void appendFile(fs::FS &fs, const char * path, const char * message) {
   file.close();
 }
 
-#ifdef USE_BUTTON
+#ifdef USE_RESET_BUTTON
 void toggleSwitchState(){
   Switch_state = !Switch_state;
 }
@@ -294,19 +343,3 @@ void resetMaxForce(){
   maxForce = 0;
 }
 #endif
-
-#ifdef USE_VEXT
-//Turn external power supply on
-void VextON(void)
-{
-  pinMode(Vext,OUTPUT);
-  digitalWrite(Vext, LOW);
-}
-
-//Turn external power supply off
-void VextOFF(void) //Vext default OFF
-{
-  pinMode(Vext,OUTPUT);
-  digitalWrite(Vext, HIGH);
-}
-#endif //USE_VEXT

@@ -6,10 +6,14 @@ Based on the original SlackCell by [Markus Rampp](https://markusrampp.eu/SlackCe
 - Great for standard slackline needs (measuring your line tension for parklines or highlines)
 - Suitable for slackline science (measurement speed as fast as possible with readily available parts)
 
-First calibrate your loadcell by loading *Calibration.ino*, and use the values displayed with your known weight to alter the calibration values in *SlackCell.ino*. Then load and run the latter file with your updated values, and you have a dyno!
-
 ## Code Notes:
-Current features are displaying current and max force on integrated OLED, and writing forces to microSD.
+Current features are:
+- Displaying current and max force on integrated OLED
+- Writing forces to microSD
+- Power management
+    - Ultra low power standby, which enables having a battery connected constantly, without draining the battery
+    - Automatically turn off when battery is low, to protect the battery
+    - Battery percentage estimation and display
 
 Current sampling rate:
 - Need to retest sampling rates for new hardware
@@ -43,7 +47,14 @@ Developed to work with different boards. Supported right now are: Heltec Wifi Ki
 
 Making your own SlackCell requires about $100 worth of parts, a soldering iron, and very minimal soldering experience. The process is as easy as soldering the pin headers to the boards, soldering the boards and loadcell wires to the pcb, and screwing the eye bolts into the load cell.
 
-Before use, a calibration sketch must be uploaded to the microcontroller and the loadcell has to be calibrated with a known weight. The calibration data has to be changed in the slackcell code, and then it can be uploaded to the board - *voila!* you have your own dynamometer!
+Most stock HX711 modules are limited in hardware to 10Hz sampling rate. This can be changed to 80Hz, but requires advanced soldering skills. Instructions can be found on [Instructables](https://www.instructables.com/How-to-Convert-Your-HX-711-Board-From-10Hz-to-80Hz/)
+
+### Calibration
+#### Loadcell
+Before use, calibrate your loadcell by uploading *Calibration.ino* with the Arduino IDE, and use the values displayed with your known weight to alter the calibration values in *include/user_config.h*. Then load and run the code like described [above](#how-to-use-the-code) with your updated values, and *voila!* you have your own dynamometer!
+
+#### Battery
+Every battery behaves differently, to get accurate battery percentage estimations follow the instructions in [analysis/plotter.py](analysis/plotter.py).
 
 ### Approximate price:
 
