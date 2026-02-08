@@ -1,10 +1,11 @@
-import matplotlib.pyplot as plt
-from scipy.ndimage import gaussian_filter1d
-import re
+import argparse
 from datetime import timedelta
 from io import StringIO
+import re
+
+import matplotlib.pyplot as plt
 import numpy as np
-import argparse
+from scipy.ndimage import gaussian_filter1d
 
 description = """
 This python file analyzes a csv file to estimate remaining battery run time based on battery voltage..
