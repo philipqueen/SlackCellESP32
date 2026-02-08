@@ -10,7 +10,7 @@ from scipy.ndimage import gaussian_filter1d
 description = """
 This python file analyzes a csv file to estimate remaining battery run time based on battery voltage..
 
-Requirements: python installation with external libraries Numpy and Scipy installed.
+Requirements: python installation with external libraries Matplotlib, Numpy and Scipy installed.
 
 How to use:
 1. Make sure HAS_BATTERY_READOUT feature is activated (include/pins.h)
@@ -22,7 +22,7 @@ How to use:
 6. Let it run until it turn off due to low battery. (That will take hours, depending on the battery connected)
 7. Copy only the section of the latest recording from the sd card into a new csv file on your computer.
 8. Run in the terminal: python analysis/plotter.py path_to_your_recording.csv
-9. Paste the LUT into your code as instructed in the serial output  of the script
+9. Paste the LUT into your code as instructed in the serial output of the script
 10. Flash code again
 """
 
