@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
+from scipy.ndimage import gaussian_filter1d
 import re
 from datetime import timedelta
 from io import StringIO
@@ -35,7 +35,14 @@ plt.ion()
 # make it nice to use from the terminal
 parser = argparse.ArgumentParser("plotter.py", formatter_class=argparse.RawDescriptionHelpFormatter, description=description)
 parser.add_argument("file", help="Path to csv file containing recording of one full battery drain", type=str)
+parser.add_argument(
+    "--smooth", metavar="sigma",
+    help="Sigma for a Gaussian filter to smooth out the battery lut, defaults to no filter",
+    default=0, type=float
+)
 args = parser.parse_args()
+
+do_smoothing = args.smooth > 0
 
 # The titles in the csv files with _ instead of whitespace. Change here if renamed in the generation code
 ids_title = 'Reading_ID'
@@ -54,18 +61,9 @@ datatypes_per_title = {
 # Helper functions
 
 
-def index_of_unique_values(a):
-    """
-    if there are subsequent equal values in an array, returns the last index of the groups
-    [0, 1, 1, 5, 5, 5, 2, 6, 7, 2, 2, 9] => [0, 2, 5, 6, 7, 8, 10, 11]
-    """
-    # works by getting the indices where two shifted versions of "a" are different and adding the last index manually
-    return np.concatenate([np.where(a[:-1] != a[1:])[0], [len(a) - 1]])
-
-
-# represents voltages with two decimal places as int. Example 3.73 V => 373, 4.15 V => 415
 def voltage_to_steps(v: float):
-    return int(round(v * 100))
+    "represents voltages with two decimal places as int. Example 3.73 V => 373, 4.15 V => 415"
+    return np.int_(np.round(v * 100))
 
 
 ########################
@@ -75,7 +73,7 @@ with open(args.file) as f:
     all_text = f.read()
     # split by any line starting with 'Reading', which should be or title headings, but include the titles in the array
     recordings_split = [s for s in re.split(r'(Reading.*)', all_text) if s.strip() != '']
-    # collect pairs of csv titles and the data of the induvidual recordings
+    # collect pairs of csv titles and the data of the individual recordings
     recordings = zip(recordings_split[::2], recordings_split[1::2])
 
     for idx, (rec_header, rec) in enumerate(recordings):
@@ -94,6 +92,8 @@ with open(args.file) as f:
         )
         # kick out weird outliers in the force
         id_time_force_filtered = id_time_force_arr[id_time_force_arr[forces_title] != -104]
+        # kick out 0V from battery reading, occurs at the beginning, before voltage value is available
+        id_time_force_filtered = id_time_force_filtered[id_time_force_filtered[battery_title] != 0]
 
         ids = id_time_force_filtered[ids_title]
         times = id_time_force_filtered[times_title]
@@ -103,19 +103,13 @@ with open(args.file) as f:
         td = timedelta(milliseconds=int(times[-1]))
         print(f"idx: {idx}, samples: {ids[-1]}, recording time (hh:mm:ss): {str(td)}, recording time seconds: {td.seconds}")
         print(f"min force (N): {np.min(forces)}, max force (N): {np.max(forces)}")
-        unique_battery_indices = index_of_unique_values(battery)[1:]
 
-        real_percent = 100 - ids[unique_battery_indices] / max(ids) * 100
-
-        # the code to fit the curve comes from here: https://stackoverflow.com/a/75598551
-
-        x = battery[unique_battery_indices]
-        y = real_percent
+        real_percent = 100 - ids / max(ids) * 100
 
         sums = {}
 
         # create a dictionary which contains summed up percentages and a counter for each voltage step
-        for i, v in enumerate(x):
+        for i, v in enumerate(battery):
             v_int = voltage_to_steps(v)
             if v_int in sums:
                 sums[v_int] = (sums[v_int][0] + real_percent[i], sums[v_int][1] + 1)
@@ -125,54 +119,29 @@ with open(args.file) as f:
         # from the sums and counters generate the average per voltage step
         look_up_dict = {voltage: sum_and_counter[0] / sum_and_counter[1] for voltage, sum_and_counter in sums.items()}
 
-        # returns percentage for given voltage based on averaged values from above
-
-        def look_up(v):
-            v_int = voltage_to_steps(v)
-            if v_int in look_up_dict:
-                return look_up_dict[voltage_to_steps(v)]
-
-        # a curve fitting well for the lipo discharge behavior, comes from here: https://electronics.stackexchange.com/a/551667
-        def lipo_curve(x, a, b, c, d):
-            return a - (a / (((1 + (x / b)**c)**d)))
-
-        # fit lipo_curve to x, y
-        # the original values, also come from the same post: https://electronics.stackexchange.com/a/551667
-        coefs_lipo_curve, _ = curve_fit(lipo_curve, x, y, [123, 3.7, 80, 0.165])
-
-        def lipo_curve_formula_str(a, b, c, d):
-            return f"{a:.3f}f - ({a:.3f}f/((pow(1 + pow(x/{b:.3f}f,{c:.3f}f),{d:.3f}f))))"
-
         # parameters for lut generation
-        min_vol = min(battery[unique_battery_indices])
-        max_vol = max(battery[unique_battery_indices])
+        min_vol = min(battery)
+        max_vol = max(battery)
         lut_length = voltage_to_steps(max_vol) - voltage_to_steps(min_vol) + 1
 
         # generate one float voltage for each space in the lut
         lut_v = np.linspace(min_vol, max_vol, num=lut_length)
 
-        lut = np.minimum(np.rint(lipo_curve(lut_v, *coefs_lipo_curve)), 100)
+        # contains potential incomplete pairs of voltage with percentage based on averaged values from above
+        dict_as_arr = np.array(sorted(look_up_dict.items()))
 
-        print(coefs_lipo_curve)
-        print(lipo_curve_formula_str(*coefs_lipo_curve))
+        # fill the potential missing voltage with linear interpolation
+        lut = np.interp(voltage_to_steps(lut_v), dict_as_arr[:, 0], dict_as_arr[:, 1], 0, 100)
+        # smooth the values
+        if do_smoothing:
+            lut_gau = gaussian_filter1d(lut, args.smooth, mode="nearest")
 
-        def mse(func, x, y, coefs):
-            return np.mean((func(x, *coefs) - y)**2)
+            # make sure the lut starts with 0% and ends with 100%
+            lut_gau[0] = 0
+            lut_gau[-1] = 100
 
-        print(f"Mean square error: {mse(lipo_curve, x, y, coefs_lipo_curve)}")
-
-        # initialize some points
-        x_data = np.linspace(min(x), max(x), 50)
-        # transform x_data to y-axis values via lipo_curve
-        y_data = lipo_curve(x_data, *coefs_lipo_curve)
-        # plot the points
-
-        y_data_dict = [look_up(v) for v in x_data]
-
-        y_data_lut = [lut[voltage_to_steps(v) - voltage_to_steps(min_vol)] for v in x_data]
-
-        if (min_vol > 3.45 or max_vol < 4.1):
-            print("\nWARNING: this recording doesn't seem to contain a complete battery drain. Use another on to replace your LUT")
+        if (min_vol > 3.4 or max_vol < 4.1):
+            print("\nWARNING: this recording doesn't seem to contain a complete battery drain. Use another one to replace your LUT")
 
         print("\nPaste and replace the following lines in include/user_config.h: \n")
 
@@ -180,17 +149,22 @@ with open(args.file) as f:
         print(f"const uint16_t max_lut_voltage = {voltage_to_steps(max_vol)};")
         c_lut = (
             'const uint8_t battery_percent_lut [] = {' +
-            ', '.join(map(str, map(int, lut))) +
+            ', '.join(map(str, map(int, np.round(lut_gau if do_smoothing else lut)))) +
             '};\n'
         )
-
         print(c_lut)
 
-        plt.plot(x, y, 'r')
-        plt.plot(x_data, y_data)
-        plt.plot(x_data, y_data_dict, 'g')
-        plt.plot(x_data, y_data_lut)
-        plt.legend(['Battery readings', 'Fitted lipo curve', 'Averaged battery readings', 'Look up table'])
+        # plot the recorded battery values and the lut
+        plt.plot(battery, real_percent, 'r')
+        plt.plot(lut_v, np.round(lut))
+        if do_smoothing:
+            plt.plot(lut_v, np.round(lut_gau))
+
+        plt.legend([
+            'Battery readings',
+            'Look up table',
+            'Look up table Gaussian filter',
+        ])
         plt.xlabel('Battery Voltage in V')
         plt.ylabel('Battery percentage')
         plt.show(block=True)
